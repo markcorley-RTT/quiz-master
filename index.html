@@ -479,8 +479,8 @@ async function assignOptionsIfNeeded(){
 function store(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v); }catch(e){ return null; } }
 let PID = store('qm.pid');
 if(!PID){ PID = 'p'+Math.random().toString(36).slice(2,10); store('qm.pid',PID); }
-function newCode(){ const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c=''; for(let i=0;i<4;i++) c+=s[Math.floor(Math.random()*s.length)]; return c; }
-function codeFromHash(){ const h=(location.hash||'').replace('#','').toUpperCase(); return /^[A-Z0-9]{4}$/.test(h)?h:null; }
+function newCode(){ const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c=''; do{ c=''; for(let i=0;i<4;i++) c+=s[Math.floor(Math.random()*s.length)]; }while(c==='BANK'||c==='DEMO'); return c; }
+function codeFromHash(){ const h=(location.hash||'').replace('#','').toUpperCase(); return /^[A-Z0-9]{4}$/.test(h)&&h!=='BANK'?h:null; }
 function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -879,7 +879,11 @@ function makeGeminiGenerator(ai, getGenerativeModel, Schema){
     properties: { q: Schema.string(), a: Schema.string(), d: Schema.integer(), y: Schema.integer({nullable:true}) },
     optionalProperties: ['y']
   })});
-  const model = getGenerativeModel(ai, { model:'gemini-3.8-flash', generationConfig:{ responseMimeType:'application/json', responseSchema:schema, temperature:1.0 } });
+  // The no-cost tier allows about 20 requests per day per model, so walk a ladder of models
+  // (each with its own quota) before giving up and letting the bank take over.
+  const MODELS = ['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash','gemini-3.5-flash-lite','gemini-3.1-flash-lite'];
+  const models = MODELS.map(m=>getGenerativeModel(ai, { model:m, generationConfig:{ responseMimeType:'application/json', responseSchema:schema, temperature:1.0 } }));
+  let start = 0; // remember which model last worked so we don't re-hit exhausted ones
   return async function(cat, count, years, avoid){
     const per = Math.max(2, Math.round(count/5));
     const oldest = years.length?Math.min(...years):1960;
@@ -890,9 +894,25 @@ Rules: each question is at most 18 words and reads naturally aloud; each has one
 Do not reuse or closely paraphrase any of these questions the group has already seen:
 ${avoid.length?avoid.map(t=>'- '+t).join('\n'):'(none yet)'}
 Return only a JSON array of objects with keys q, a, d, y.`;
-    const res = await model.generateContent(prompt);
-    let text = res.response.text().trim().replace(/^```(?:json)?\s*/,'').replace(/```$/,'');
-    return JSON.parse(text);
+    let lastErr = null;
+    for(let i=start; i<models.length; i++){
+      try{
+        const res = await models[i].generateContent(prompt);
+        const text = res.response.text().trim().replace(/^```(?:json)?\s*/,'').replace(/```$/,'');
+        const parsed = JSON.parse(text);
+        start = i;
+        return parsed;
+      }catch(e){
+        lastErr = e;
+        const msg = String(e && e.message || e);
+        const quota = /429|quota|RESOURCE_EXHAUSTED/i.test(msg);
+        const missing = /404|not found|NOT_FOUND/i.test(msg);
+        console.warn('Question writer '+MODELS[i]+' failed'+(quota?' (quota)':missing?' (unavailable)':''), msg.slice(0,160));
+        if(quota || missing){ if(i===start) start = i+1; continue; }
+        throw e;
+      }
+    }
+    throw lastErr || new Error('no model available');
   };
 }
 
@@ -900,8 +920,26 @@ Return only a JSON array of objects with keys q, a, d, y.`;
 let realDb = null;
 window.addEventListener('hashchange', ()=>{ if(sim) return; const c=codeFromHash(); if(c!==code){ code=c; if(db) subscribe(); } });
 render();
+// Shared fallback bank stored in Firestore under the reserved code BANK (one doc per category).
+function loadSharedBank(store){
+  const have = new Set(BANK.map(q=>q.q.toLowerCase()));
+  CATS.forEach(c=>{
+    store.doc('games/BANK/sets/'+c.id).get().then(snap=>{
+      if(!snap.exists) return;
+      let added=0;
+      (snap.data().qs||[]).forEach((q,i)=>{
+        if(!q||!q.q||!q.a||have.has(String(q.q).toLowerCase())) return;
+        have.add(String(q.q).toLowerCase());
+        BANK.push({id:'b'+c.id+'_'+i, c:c.id, d:Math.min(5,Math.max(1,+q.d||3)), y:(+q.y>1000?+q.y:null), q:String(q.q), a:String(q.a)});
+        added++;
+      });
+      if(added) console.info('Shared bank: +'+added+' '+c.name);
+    }).catch(e=>console.warn('Shared bank unavailable for '+c.id, e));
+  });
+}
 window.QM_boot = function(store, gen){
   realDb = store; liveGen = gen;
+  if(realDb) loadSharedBank(realDb);
   if(!realDb){
     app.innerHTML='<div class="card"><p class="eyebrow">Quiz Master</p><h2>Live games aren’t set up yet</h2><p class="muted">The shared game store hasn’t been configured on this site. You can still try the 4-player demo on this device.</p><button data-act="demo">Start 4-player demo</button></div>';
     bind(); return;
