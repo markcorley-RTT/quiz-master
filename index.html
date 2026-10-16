@@ -31,6 +31,7 @@
   --accent:#8fa4ff; --accent-fg:#101225; --good:#4cc77e; --bad:#ff6b6b; --soft:#2a2833;
   --c-geo:#6b9bff; --c-ent:#ff6fae; --c-his:#f2c14e; --c-art:#b58cff; --c-sci:#52d49a; --c-spo:#ff9a55;
   color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
 html,body{height:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:17px;line-height:1.45;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 button,input,a{touch-action:manipulation}
@@ -629,7 +630,7 @@ function act(d){
     case 'exitdemo': { sim=false; code=null; db=realDb; PID=store('qm.pid'); location.hash=''; subscribe(); return; }
     case 'joincode': { const v=(document.getElementById('joincode').value||'').trim().toUpperCase(); if(/^[A-Z0-9]{4}$/.test(v)){ code=v; location.hash=v; subscribe(); } return; }
     case 'leave': sim=false; code=null; db=realDb; PID=store('qm.pid'); location.hash=''; subscribe(); return;
-    case 'copylink': { const url=location.href.split('#')[0]+'#'+code; navigator.clipboard.writeText(url).then(()=>{},()=>{}); return; }
+    case 'copylink': { const url=location.href.split('#')[0].replace(/\/?$/,'/')+'#'+code; navigator.clipboard.writeText(url).then(()=>{},()=>{}); return; }
     case 'join': { const name=draft.name.trim(), year=draft.year.trim(); if(!name||!/^\d{4}$/.test(year)) return; return safeWrite(()=>joinGame(name,year)); }
     case 'start': return safeWrite(startGame);
     case 'pick': return safeWrite(()=>chooseQuestion(game.options[+d.i]));
