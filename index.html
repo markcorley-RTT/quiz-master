@@ -470,7 +470,7 @@ async function assignOptionsIfNeeded(){
       const merged = groupSeen.concat(texts.filter(t=>!groupSeen.includes(t))).slice(-600);
       db.doc('groups/'+game.group).set({seen:merged, at:Date.now()}).catch(e=>console.warn(e));
     }
-    const nextCat = CATS[Math.floor((game.turn+1)/game.order.length)];
+    const nextCat = CATS[game.cat+1];
     if(nextCat) ensureSet(nextCat.id);
   }catch(e){ console.error(e); assigning=null; }
 }
