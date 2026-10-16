@@ -5,8 +5,12 @@ service cloud.firestore {
     match /games/{code} {
       allow read, write: if code.size() == 4;
       match /{sub}/{doc} {
-        allow read, write: if code.size() == 4 && (sub == 'players' || sub == 'answers');
+        allow read, write: if code.size() == 4 && (sub == 'players' || sub == 'answers' || sub == 'sets');
       }
+    }
+    // Per-group memory of questions already seen (key = sorted player names).
+    match /groups/{key} {
+      allow read, write: if key.size() <= 200;
     }
   }
 }
