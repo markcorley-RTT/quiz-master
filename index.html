@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quiz Master</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ee">
+<link rel="icon" href="data:,">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;800&family=Karla:wght@400;500;700&display=swap">
+<style>
+/* Layout: one phone-width column, a sticky scoreboard strip at the bottom, category color as the only accent per round. */
+:root{
+  --bg:#f6f3ee; --surface:#ffffff; --fg:#1c1a17; --muted:#6b655c; --line:#dcd6cc;
+  --accent:#2a4bd7; --accent-fg:#ffffff; --good:#1f8a4c; --bad:#c23b3b; --soft:#ece7df;
+  --c-geo:#2f6fd6; --c-ent:#d6367a; --c-his:#d9a21b; --c-art:#8a4fd6; --c-sci:#2a9d6b; --c-spo:#e2651d;
+  --display:"Sora",system-ui,sans-serif; --body:"Karla",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#15141a; --surface:#1f1e26; --fg:#f1eee8; --muted:#a39d93; --line:#34323c;
+  --accent:#8fa4ff; --accent-fg:#101225; --good:#4cc77e; --bad:#ff6b6b; --soft:#2a2833;
+  --c-geo:#6b9bff; --c-ent:#ff6fae; --c-his:#f2c14e; --c-art:#b58cff; --c-sci:#52d49a; --c-spo:#ff9a55;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15141a; --surface:#1f1e26; --fg:#f1eee8; --muted:#a39d93; --line:#34323c;
+  --accent:#8fa4ff; --accent-fg:#101225; --good:#4cc77e; --bad:#ff6b6b; --soft:#2a2833;
+  --c-geo:#6b9bff; --c-ent:#ff6fae; --c-his:#f2c14e; --c-art:#b58cff; --c-sci:#52d49a; --c-spo:#ff9a55;
+  color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:17px;line-height:1.45;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+button,input,a{touch-action:manipulation}
+#app{flex:1;display:flex;flex-direction:column;max-width:560px;width:100%;margin:0 auto;padding-block:18px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));gap:16px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:2rem;font-weight:800}
+h2{font-size:1.35rem;font-weight:800}
+h3{font-size:1rem;font-weight:600}
+p{margin:0}
+.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.muted{color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+button{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:12px 16px;cursor:pointer;min-height:48px}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+button.ghost{background:transparent}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);width:100%;min-height:48px}
+label{font-size:.85rem;font-weight:700;display:block;margin-bottom:4px}
+.code{font-family:var(--display);font-weight:800;font-size:2.4rem;letter-spacing:.18em;font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;background:var(--soft)}
+.cat-band{border-radius:14px;padding:16px;color:#fff;display:flex;flex-direction:column;gap:6px}
+.cat-band .eyebrow{color:rgba(255,255,255,.8)}
+.cat-band h2{color:#fff;font-size:1.6rem}
+.qopt{text-align:left;display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:14px;font-weight:500;line-height:1.35}
+.qopt .diff{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pips{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}
+.pips i{width:8px;height:8px;border-radius:2px;background:var(--line);display:inline-block}
+.pips i.on{background:var(--fg)}
+.big-q{font-family:var(--display);font-size:1.4rem;font-weight:600;line-height:1.3}
+.answer-box{font-size:1.15rem}
+.plist{display:flex;flex-direction:column;gap:8px}
+.prow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.prow .name{font-weight:700}
+.prow .ans{color:var(--muted);font-size:.95rem}
+.judge{display:flex;gap:6px}
+.judge button{padding:8px 0;min-height:48px;min-width:52px;border-radius:10px;font-size:1.2rem}
+.qopt{min-height:64px}
+.qopt:active,button.primary:active{transform:scale(.985)}
+.judge button.on-good{background:var(--good);color:#fff;border-color:transparent}
+.judge button.on-bad{background:var(--bad);color:#fff;border-color:transparent}
+.mark{font-weight:800;font-size:.9rem}
+.mark.good{color:var(--good)}
+.mark.bad{color:var(--bad)}
+.delta{font-variant-numeric:tabular-nums;font-weight:800;font-family:var(--display)}
+.scoreboard{position:sticky;bottom:env(safe-area-inset-bottom,0px);margin-top:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 12px;display:flex;flex-direction:column;gap:4px;box-shadow:0 -6px 18px rgba(0,0,0,.08)}
+.scoreboard .rows{display:flex;gap:6px 14px;flex-wrap:wrap}
+.scoreboard .srow{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-size:.95rem}
+.scoreboard .srow.me .nm{font-weight:800}
+.scoreboard .sc{font-family:var(--display);font-weight:800}
+.qm-tag{font-size:.7rem;padding:2px 6px;border-radius:6px;background:var(--soft);color:var(--muted);font-weight:700;letter-spacing:.04em}
+.notice{background:var(--soft);border-radius:12px;padding:10px 12px;font-size:.9rem}
+.notice.err{border:1px solid var(--bad)}
+.final{display:flex;flex-direction:column;gap:8px}
+.final .frow{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-variant-numeric:tabular-nums}
+.final .frow.first{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.final .rank{font-family:var(--display);font-weight:800;width:28px}
+.curve{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;font-size:.75rem;text-align:center;color:var(--muted)}
+.curve b{display:block;color:var(--fg);font-family:var(--display)}
+.seats{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:4px 8px;border-bottom:1px dashed var(--line);display:flex;flex-direction:column;gap:6px}
+.seatrow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.seat{padding:8px 4px;min-height:44px;border-radius:10px;font-size:.9rem;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.1}
+.seat.on{background:var(--fg);color:var(--bg);border-color:transparent}
+.seat.on .qm-tag{background:var(--bg);color:var(--fg)}
+button.small{min-height:36px;padding:6px 10px;font-size:.85rem;align-self:flex-start}
+.wait{display:flex;align-items:center;gap:10px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+</style>
+
+<div id="app">
+  <div class="card" id="boot">
+    <p class="eyebrow">Quiz Master</p>
+    <h1>Connecting…</h1>
+    <p class="muted">Pass-the-question trivia. The Quiz Master scores best when about half the room gets it right.</p>
+  </div>
+</div>
+
+<script>
+// ---------- Question bank ----------
+// c: category, d: difficulty 1 (easy) to 5 (hard), y: year the subject belongs to (null = timeless)
+const CATS = [
+  {id:'geo', name:'Geography', color:'var(--c-geo)'},
+  {id:'ent', name:'Entertainment', color:'var(--c-ent)'},
+  {id:'his', name:'History', color:'var(--c-his)'},
+  {id:'art', name:'Arts & Literature', color:'var(--c-art)'},
+  {id:'sci', name:'Science & Nature', color:'var(--c-sci)'},
+  {id:'spo', name:'Sports & Leisure', color:'var(--c-spo)'},
+];
+const BANK = [
+  // Geography
+  {c:'geo',d:1,y:null,q:'What is the capital of France?',a:'Paris'},
+  {c:'geo',d:1,y:null,q:'Which is the largest ocean on Earth?',a:'The Pacific Ocean'},
+  {c:'geo',d:1,y:null,q:'On which continent is the Sahara Desert?',a:'Africa'},
+  {c:'geo',d:2,y:null,q:'Which river flows through Cairo?',a:'The Nile'},
+  {c:'geo',d:2,y:null,q:'What is the capital of Australia?',a:'Canberra'},
+  {c:'geo',d:2,y:null,q:'What is the smallest country in the world by area?',a:'Vatican City'},
+  {c:'geo',d:2,y:null,q:'Mount Everest sits on the border of Nepal and which other country?',a:'China (Tibet)'},
+  {c:'geo',d:3,y:null,q:'What is the capital of Canada?',a:'Ottawa'},
+  {c:'geo',d:3,y:null,q:'The Strait of Gibraltar separates Spain from which country?',a:'Morocco'},
+  {c:'geo',d:3,y:1991,q:'After Russia, which was the largest country to emerge from the 1991 breakup of the Soviet Union?',a:'Kazakhstan'},
+  {c:'geo',d:3,y:null,q:'What is the longest river in Asia?',a:'The Yangtze'},
+  {c:'geo',d:4,y:null,q:'What is the capital of Mongolia?',a:'Ulaanbaatar'},
+  {c:'geo',d:4,y:null,q:'Lake Titicaca lies between Peru and which other country?',a:'Bolivia'},
+  {c:'geo',d:4,y:2011,q:'Which country became independent in 2011, making it the world’s newest widely recognized nation?',a:'South Sudan'},
+  {c:'geo',d:4,y:null,q:'Which two countries share the longest international land border?',a:'Canada and the United States'},
+  {c:'geo',d:5,y:null,q:'What is the capital of Burkina Faso?',a:'Ouagadougou'},
+  {c:'geo',d:5,y:null,q:'Nuuk is the capital of which territory?',a:'Greenland'},
+  {c:'geo',d:5,y:null,q:'Which country is generally credited with having the most islands?',a:'Sweden'},
+  // Entertainment
+  {c:'ent',d:1,y:1997,q:'Which 1997 film starred Leonardo DiCaprio and Kate Winslet aboard a doomed ocean liner?',a:'Titanic'},
+  {c:'ent',d:1,y:1980,q:'In the Star Wars saga, who is revealed to be Luke Skywalker’s father?',a:'Darth Vader (Anakin Skywalker)'},
+  {c:'ent',d:1,y:1994,q:'Which sitcom, starting in 1994, followed six friends living in Manhattan?',a:'Friends'},
+  {c:'ent',d:1,y:2013,q:'Which Disney film features the song “Let It Go”?',a:'Frozen'},
+  {c:'ent',d:2,y:1982,q:'Who directed E.T. the Extra-Terrestrial?',a:'Steven Spielberg'},
+  {c:'ent',d:2,y:1969,q:'Which band recorded the album Abbey Road?',a:'The Beatles'},
+  {c:'ent',d:2,y:2008,q:'Who played Tony Stark in the Marvel Iron Man films?',a:'Robert Downey Jr.'},
+  {c:'ent',d:2,y:1975,q:'Which 1975 film featured a great white shark terrorizing Amity Island?',a:'Jaws'},
+  {c:'ent',d:2,y:2019,q:'Which TV series ended in 2019 with a battle for the Iron Throne?',a:'Game of Thrones'},
+  {c:'ent',d:3,y:1972,q:'Who directed The Godfather?',a:'Francis Ford Coppola'},
+  {c:'ent',d:3,y:1991,q:'Which grunge band released the album Nevermind?',a:'Nirvana'},
+  {c:'ent',d:3,y:1999,q:'Which TV drama followed New Jersey mob boss Tony and his family?',a:'The Sopranos'},
+  {c:'ent',d:3,y:1984,q:'Which artist released the album Purple Rain?',a:'Prince'},
+  {c:'ent',d:3,y:2010,q:'Which Christopher Nolan film involves planting ideas inside dreams within dreams?',a:'Inception'},
+  {c:'ent',d:3,y:1986,q:'In which film does Tom Cruise play a naval aviator nicknamed Maverick?',a:'Top Gun'},
+  {c:'ent',d:4,y:1968,q:'Who directed 2001: A Space Odyssey?',a:'Stanley Kubrick'},
+  {c:'ent',d:4,y:1960,q:'Which Alfred Hitchcock film is set at the Bates Motel?',a:'Psycho'},
+  {c:'ent',d:4,y:2004,q:'Which band released the song “Mr. Brightside”?',a:'The Killers'},
+  {c:'ent',d:4,y:1994,q:'Which Tom Hanks film won Best Picture at the Oscars held in 1995?',a:'Forrest Gump'},
+  {c:'ent',d:5,y:1941,q:'Which Orson Welles film centers on the mystery of the word “Rosebud”?',a:'Citizen Kane'},
+  {c:'ent',d:5,y:1966,q:'Who composed the theme for The Good, the Bad and the Ugly?',a:'Ennio Morricone'},
+  {c:'ent',d:5,y:1950,q:'In which 1950 film does Gloria Swanson play faded silent-film star Norma Desmond?',a:'Sunset Boulevard'},
+  // History
+  {c:'his',d:1,y:1969,q:'Who was the first person to walk on the Moon?',a:'Neil Armstrong'},
+  {c:'his',d:1,y:1776,q:'In what year was the U.S. Declaration of Independence adopted?',a:'1776'},
+  {c:'his',d:1,y:1989,q:'Which wall came down in 1989, symbolizing the end of the Cold War?',a:'The Berlin Wall'},
+  {c:'his',d:1,y:2001,q:'In what year did the September 11 attacks take place?',a:'2001'},
+  {c:'his',d:2,y:1912,q:'Which ocean liner sank on its maiden voyage in 1912?',a:'The Titanic'},
+  {c:'his',d:2,y:1945,q:'In what year did World War II end?',a:'1945'},
+  {c:'his',d:2,y:1865,q:'Who assassinated Abraham Lincoln?',a:'John Wilkes Booth'},
+  {c:'his',d:2,y:1963,q:'In which city was John F. Kennedy assassinated?',a:'Dallas'},
+  {c:'his',d:3,y:1215,q:'Which charter did King John of England agree to in 1215?',a:'Magna Carta'},
+  {c:'his',d:3,y:1917,q:'In which year did the Russian Revolution take place?',a:'1917'},
+  {c:'his',d:3,y:1974,q:'Which U.S. president resigned from office in 1974?',a:'Richard Nixon'},
+  {c:'his',d:3,y:1066,q:'Which 1066 battle made William the Conqueror King of England?',a:'The Battle of Hastings'},
+  {c:'his',d:3,y:1492,q:'Which explorer, sailing for Spain, reached the Americas in 1492?',a:'Christopher Columbus'},
+  {c:'his',d:4,y:1815,q:'At which 1815 battle was Napoleon finally defeated?',a:'Waterloo'},
+  {c:'his',d:4,y:1961,q:'Who was the first human to travel into space?',a:'Yuri Gagarin'},
+  {c:'his',d:4,y:1453,q:'Which city fell to the Ottoman Empire in 1453?',a:'Constantinople'},
+  {c:'his',d:4,y:1803,q:'Which 1803 land deal roughly doubled the size of the United States?',a:'The Louisiana Purchase'},
+  {c:'his',d:5,y:1648,q:'Which 1648 peace settlement ended the Thirty Years’ War?',a:'The Peace of Westphalia'},
+  {c:'his',d:5,y:null,q:'Who was the first emperor of a unified China?',a:'Qin Shi Huang'},
+  {c:'his',d:5,y:1381,q:'Who led the Peasants’ Revolt in England in 1381?',a:'Wat Tyler'},
+  {c:'his',d:5,y:1856,q:'Which war, which ended in 1856, included the Charge of the Light Brigade?',a:'The Crimean War'},
+  // Arts & Literature
+  {c:'art',d:1,y:null,q:'Who painted the Mona Lisa?',a:'Leonardo da Vinci'},
+  {c:'art',d:1,y:null,q:'Who wrote Romeo and Juliet?',a:'William Shakespeare'},
+  {c:'art',d:1,y:1997,q:'Who wrote the Harry Potter series?',a:'J.K. Rowling'},
+  {c:'art',d:1,y:1843,q:'Who wrote A Christmas Carol?',a:'Charles Dickens'},
+  {c:'art',d:2,y:null,q:'Who painted The Starry Night?',a:'Vincent van Gogh'},
+  {c:'art',d:2,y:1960,q:'Who wrote To Kill a Mockingbird?',a:'Harper Lee'},
+  {c:'art',d:2,y:1949,q:'Who wrote the novel Nineteen Eighty-Four?',a:'George Orwell'},
+  {c:'art',d:2,y:null,q:'Which Renaissance artist sculpted the statue of David in Florence?',a:'Michelangelo'},
+  {c:'art',d:3,y:1925,q:'Who wrote The Great Gatsby?',a:'F. Scott Fitzgerald'},
+  {c:'art',d:3,y:1937,q:'Who painted Guernica?',a:'Pablo Picasso'},
+  {c:'art',d:3,y:1813,q:'Who wrote Pride and Prejudice?',a:'Jane Austen'},
+  {c:'art',d:3,y:1954,q:'Who wrote The Lord of the Rings?',a:'J.R.R. Tolkien'},
+  {c:'art',d:3,y:1931,q:'Who painted The Persistence of Memory, the one with the melting clocks?',a:'Salvador Dalí'},
+  {c:'art',d:4,y:1667,q:'Who wrote the epic poem Paradise Lost?',a:'John Milton'},
+  {c:'art',d:4,y:1866,q:'Who wrote Crime and Punishment?',a:'Fyodor Dostoevsky'},
+  {c:'art',d:4,y:null,q:'Which Dutch painter created Girl with a Pearl Earring?',a:'Johannes Vermeer'},
+  {c:'art',d:4,y:1967,q:'Who wrote One Hundred Years of Solitude?',a:'Gabriel García Márquez'},
+  {c:'art',d:5,y:null,q:'Who wrote The Divine Comedy?',a:'Dante Alighieri'},
+  {c:'art',d:5,y:1922,q:'Who wrote Ulysses, a novel set in Dublin on a single day?',a:'James Joyce'},
+  {c:'art',d:5,y:null,q:'Which Japanese artist created the woodblock print The Great Wave off Kanagawa?',a:'Hokusai'},
+  {c:'art',d:5,y:1948,q:'Who painted Christina’s World?',a:'Andrew Wyeth'},
+  // Science & Nature
+  {c:'sci',d:1,y:null,q:'What is the chemical formula for water?',a:'H₂O'},
+  {c:'sci',d:1,y:null,q:'Which planet is known as the Red Planet?',a:'Mars'},
+  {c:'sci',d:1,y:null,q:'How many legs does a spider have?',a:'Eight'},
+  {c:'sci',d:2,y:null,q:'Which gas do plants take in from the air for photosynthesis?',a:'Carbon dioxide'},
+  {c:'sci',d:2,y:null,q:'What is the largest organ of the human body?',a:'The skin'},
+  {c:'sci',d:2,y:null,q:'What is the hardest naturally occurring substance?',a:'Diamond'},
+  {c:'sci',d:2,y:null,q:'What is the chemical symbol for gold?',a:'Au'},
+  {c:'sci',d:2,y:null,q:'What is the pH of pure water?',a:'7 (neutral)'},
+  {c:'sci',d:3,y:null,q:'What is the most abundant gas in Earth’s atmosphere?',a:'Nitrogen'},
+  {c:'sci',d:3,y:null,q:'Which part of the cell is often called its powerhouse?',a:'The mitochondrion'},
+  {c:'sci',d:3,y:1953,q:'Which two scientists published the double-helix structure of DNA in 1953?',a:'James Watson and Francis Crick'},
+  {c:'sci',d:3,y:null,q:'What is the largest animal ever known to have lived?',a:'The blue whale'},
+  {c:'sci',d:3,y:null,q:'What is the most abundant element in the universe?',a:'Hydrogen'},
+  {c:'sci',d:3,y:null,q:'What is the SI unit of electrical resistance?',a:'The ohm'},
+  {c:'sci',d:4,y:null,q:'Which metal is liquid at room temperature?',a:'Mercury'},
+  {c:'sci',d:4,y:null,q:'What is the name of the bone in the upper arm?',a:'The humerus'},
+  {c:'sci',d:4,y:null,q:'How many bones are in the adult human body?',a:'206'},
+  {c:'sci',d:4,y:null,q:'What is the process called when a solid turns directly into a gas?',a:'Sublimation'},
+  {c:'sci',d:4,y:null,q:'What is the chemical symbol for tungsten?',a:'W'},
+  {c:'sci',d:5,y:1927,q:'Which physicist proposed the uncertainty principle in 1927?',a:'Werner Heisenberg'},
+  {c:'sci',d:5,y:null,q:'What is the heaviest element found naturally in significant amounts on Earth?',a:'Uranium'},
+  {c:'sci',d:5,y:null,q:'What is the closest star system to our Sun?',a:'Alpha Centauri'},
+  // Sports & Leisure
+  {c:'spo',d:1,y:null,q:'How many players does a soccer team have on the field at once?',a:'11'},
+  {c:'spo',d:1,y:null,q:'In which sport would you perform a slam dunk?',a:'Basketball'},
+  {c:'spo',d:1,y:null,q:'How many holes are on a standard golf course?',a:'18'},
+  {c:'spo',d:2,y:1896,q:'In which city were the first modern Olympic Games held in 1896?',a:'Athens'},
+  {c:'spo',d:2,y:null,q:'How many points is a touchdown worth in American football?',a:'6'},
+  {c:'spo',d:2,y:2016,q:'Which Jamaican sprinter won the Olympic 100 m three times in a row (2008, 2012, 2016)?',a:'Usain Bolt'},
+  {c:'spo',d:2,y:null,q:'What is the national sport of Japan?',a:'Sumo wrestling'},
+  {c:'spo',d:3,y:1998,q:'Which player won six NBA championships with the Chicago Bulls in the 1990s?',a:'Michael Jordan'},
+  {c:'spo',d:3,y:null,q:'In tennis, what is a score of zero called?',a:'Love'},
+  {c:'spo',d:3,y:1966,q:'Which country won the 1966 FIFA World Cup?',a:'England'},
+  {c:'spo',d:3,y:null,q:'In chess, which piece moves only diagonally?',a:'The bishop'},
+  {c:'spo',d:3,y:2021,q:'Which quarterback won his seventh Super Bowl in February 2021?',a:'Tom Brady'},
+  {c:'spo',d:3,y:2008,q:'Which swimmer won eight gold medals at the 2008 Beijing Olympics?',a:'Michael Phelps'},
+  {c:'spo',d:4,y:1936,q:'Which American athlete won four gold medals at the 1936 Berlin Olympics?',a:'Jesse Owens'},
+  {c:'spo',d:4,y:null,q:'How long is an Olympic-size swimming pool?',a:'50 meters'},
+  {c:'spo',d:4,y:1954,q:'Who was the first person to run a mile in under four minutes, in 1954?',a:'Roger Bannister'},
+  {c:'spo',d:4,y:null,q:'In cricket, how many balls are bowled in a standard over?',a:'6'},
+  {c:'spo',d:4,y:1973,q:'Which horse won the 1973 Triple Crown, taking the Belmont by 31 lengths?',a:'Secretariat'},
+  {c:'spo',d:5,y:1980,q:'Which team did the U.S. beat in the 1980 “Miracle on Ice” Olympic hockey game?',a:'The Soviet Union'},
+  {c:'spo',d:5,y:1988,q:'Who won the 1988 Olympic 100 m in Seoul but was stripped of the gold for doping?',a:'Ben Johnson'},
+  {c:'spo',d:5,y:null,q:'Which country has won the most Davis Cup titles in tennis?',a:'The United States'},
+];
+BANK.forEach((q,i)=>q.id='q'+i);
+
+// ---------- Scoring ----------
+const QM_MAX = 3;
+// Bell curve on the share of answerers who got it right: 0 at 0% and 100%, QM_MAX at 50%.
+function qmPoints(correct, answerers){
+  if(!answerers) return 0;
+  const p = correct/answerers;
+  return Math.round(QM_MAX * 4 * p * (1-p));
+}
+const PLAYER_POINTS = 1;
+
+// ---------- Question selection ----------
+// Era weighting: a question everyone lived through counts most; one only the oldest players lived through less; before everyone's time least. Timeless questions always count fully.
+function pickOptions(catId, players, usedIds){
+  const years = Object.values(players).map(p=>+p.year).filter(y=>y>1900);
+  const youngest = years.length?Math.max(...years):1980, oldest = years.length?Math.min(...years):1960;
+  const weight = q=>{
+    if(q.y==null) return 1;
+    if(q.y >= youngest+8) return 1;
+    if(q.y >= oldest+8) return .6;
+    return .3;
+  };
+  const used = new Set(usedIds||[]);
+  const out=[];
+  for(let d=1; d<=5; d++){
+    let pool = BANK.filter(q=>q.c===catId && q.d===d && !used.has(q.id));
+    if(!pool.length) pool = BANK.filter(q=>q.c===catId && q.d===d);
+    if(!pool.length) continue;
+    const total = pool.reduce((s,q)=>s+weight(q),0);
+    let r = Math.random()*total;
+    let pick = pool[pool.length-1];
+    for(const q of pool){ r -= weight(q); if(r<=0){ pick=q; break; } }
+    out.push({id:pick.id, d:pick.d, q:pick.q, a:pick.a});
+  }
+  return out;
+}
+
+// ---------- Identity & game code ----------
+function store(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v); }catch(e){ return null; } }
+let PID = store('qm.pid');
+if(!PID){ PID = 'p'+Math.random().toString(36).slice(2,10); store('qm.pid',PID); }
+function newCode(){ const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c=''; for(let i=0;i<4;i++) c+=s[Math.floor(Math.random()*s.length)]; return c; }
+function codeFromHash(){ const h=(location.hash||'').replace('#','').toUpperCase(); return /^[A-Z0-9]{4}$/.test(h)?h:null; }
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- Local store for the single-device demo (same shape as the shared store) ----------
+function localStore(){
+  const docs = new Map(), listeners = new Set();
+  const notify = ()=>listeners.forEach(l=>l());
+  const snap = (path)=>({id:path.split('/').pop(), exists:docs.has(path), data:()=>docs.get(path)});
+  const docRef = path=>({
+    id:path.split('/').pop(), path,
+    async get(){ return snap(path); },
+    async set(data){ docs.set(path, JSON.parse(JSON.stringify(data))); notify(); },
+    async delete(){ docs.delete(path); notify(); },
+    onSnapshot(next){ const l=()=>next(snap(path)); listeners.add(l); setTimeout(l,0); return ()=>listeners.delete(l); }
+  });
+  const colRef = path=>({
+    path, doc:id=>docRef(path+'/'+id),
+    onSnapshot(next){ const l=()=>{ const ds=[...docs.keys()].filter(k=>k.startsWith(path+'/')&&k.slice(path.length+1).indexOf('/')<0).map(k=>snap(k)); next({docs:ds,size:ds.length,empty:!ds.length}); }; listeners.add(l); setTimeout(l,0); return ()=>listeners.delete(l); }
+  });
+  return {doc:docRef, collection:colRef};
+}
+const SIM_SEATS = [
+  {id:'s1', name:'Mark', year:'1972'},
+  {id:'s2', name:'Sam', year:'1985'},
+  {id:'s3', name:'Jo', year:'1998'},
+  {id:'s4', name:'Pat', year:'2004'},
+];
+let sim = false;
+
+// ---------- App state ----------
+const app = document.getElementById('app');
+let db = null, code = codeFromHash(), game = null, players = {}, answers = {}, unsubs = [], writeBlocked = false, busy = false;
+let draft = {name: store('qm.name')||'', year: store('qm.year')||'', answer:'', custom:'', customA:''};
+let judged = {}; // local QM judgments before reveal
+
+function gameRef(){ return db.doc('games/'+code); }
+function playerRef(pid){ return db.doc('games/'+code+'/players/'+(pid||PID)); }
+function answerRef(pid){ return db.doc('games/'+code+'/answers/'+(pid||PID)); }
+
+async function safeWrite(fn){
+  if(busy) return; busy=true; render();
+  try{ await fn(); }
+  catch(e){ if(e && e.code==='invalid_argument') writeBlocked=true; console.error(e); }
+  busy=false; render();
+}
+
+function subscribe(){
+  unsubs.forEach(u=>u()); unsubs=[]; game=null; players={}; answers={};
+  if(!code) { render(); return; }
+  unsubs.push(gameRef().onSnapshot(s=>{ game = s.exists ? s.data() : null; render(); }, e=>{ console.error(e); }));
+  unsubs.push(db.collection('games/'+code+'/players').onSnapshot(s=>{ players={}; s.docs.forEach(d=>players[d.id]=d.data()); render(); }, e=>console.error(e)));
+  unsubs.push(db.collection('games/'+code+'/answers').onSnapshot(s=>{ answers={}; s.docs.forEach(d=>answers[d.id]=d.data()); render(); }, e=>console.error(e)));
+}
+
+// ---------- Actions ----------
+async function createGame(){
+  code = newCode();
+  await gameRef().set({code, phase:'lobby', created: Date.now(), turn:0, cat:0, round:0, usedIds:[], order:[], scores:{}});
+  location.hash = code;
+  subscribe();
+}
+async function joinGame(name, year){
+  store('qm.name',name); store('qm.year',year);
+  await playerRef().set({name, year, joined: Date.now()});
+}
+async function startGame(){
+  const ids = Object.keys(players);
+  const order = shuffle(ids);
+  const scores = {}; ids.forEach(id=>scores[id]=0);
+  const options = pickOptions(CATS[0].id, players, []);
+  await gameRef().set({...game, phase:'pick', order, scores, turn:0, cat:0, round:0, usedIds:[], options, question:null, results:null});
+}
+async function chooseQuestion(opt){
+  judged = {};
+  const usedIds = (game.usedIds||[]).concat(opt.id?[opt.id]:[]);
+  await gameRef().set({...game, phase:'answer', round:(game.round||0)+1, question:{q:opt.q, a:opt.a, d:opt.d||0, custom:!opt.id}, usedIds, results:null});
+}
+async function submitAnswer(text){
+  await answerRef().set({round: game.round, text, at: Date.now()});
+}
+async function closeAnswers(){
+  await gameRef().set({...game, phase:'judge'});
+}
+async function reveal(){
+  const qm = game.order[game.turn % game.order.length];
+  const others = game.order.filter(id=>id!==qm);
+  const scores = {...game.scores};
+  let correct = 0;
+  const marks = {};
+  others.forEach(id=>{ const ok = !!judged[id]; marks[id]=ok; if(ok){ correct++; scores[id]=(scores[id]||0)+PLAYER_POINTS; } });
+  const qmPts = qmPoints(correct, others.length);
+  scores[qm] = (scores[qm]||0) + qmPts;
+  const results = {marks, correct, answerers: others.length, qmPts, answers: Object.fromEntries(others.map(id=>[id,(answers[id]&&answers[id].round===game.round)?answers[id].text:'']))};
+  await gameRef().set({...game, phase:'reveal', scores, results});
+}
+async function nextRound(){
+  // The Quiz Master role passes every question; everyone hosts one question per category.
+  const turn = game.turn+1, n = game.order.length;
+  const cat = Math.floor(turn/n);
+  if(turn >= n*CATS.length){
+    await gameRef().set({...game, phase:'final', question:null, results:null});
+    return;
+  }
+  const options = pickOptions(CATS[cat].id, players, game.usedIds||[]);
+  await gameRef().set({...game, phase:'pick', cat, turn, options, question:null, results:null});
+}
+async function startDemo(){
+  sim = true; db = localStore(); code = 'DEMO'; PID = SIM_SEATS[0].id; judged = {};
+  await gameRef().set({code, phase:'lobby', created: Date.now(), turn:0, cat:0, round:0, usedIds:[], order:[], scores:{}});
+  for(const [i,s] of SIM_SEATS.entries()) await playerRef(s.id).set({name:s.name, year:s.year, joined: Date.now()+i});
+  subscribe();
+}
+function switchSeat(id){ PID = id; draft.answer=''; render(); }
+async function autoAnswerOthers(){
+  const qm = qmId();
+  const others = game.order.filter(id=>id!==qm && !(answers[id]&&answers[id].round===game.round));
+  const wrong = ['Not sure…','I’ll guess','Pass','Something else'];
+  for(const [i,id] of others.entries()){
+    const right = Math.random()<0.5;
+    await answerRef(id).set({round: game.round, text: right ? game.question.a : wrong[i%wrong.length], at: Date.now()});
+  }
+}
+async function playAgain(){
+  judged={};
+  await gameRef().set({code, phase:'lobby', created: Date.now(), turn:0, cat:0, round:0, usedIds:[], order:[], scores:{}});
+}
+
+// ---------- Rendering ----------
+function pips(d){ let s='<span class="pips">'; for(let i=1;i<=5;i++) s+='<i class="'+(i<=d?'on':'')+'"></i>'; return s+'</span>'; }
+function diffName(d){ return ['','Easy','Fairly easy','Medium','Hard','Very hard'][d]||'Your own'; }
+function nameOf(id){ return (players[id]&&players[id].name) || 'Player'; }
+function qmId(){ return game && game.order && game.order.length ? game.order[game.turn % game.order.length] : null; }
+function isQM(){ return qmId()===PID; }
+
+function render(){
+  if(!db){ app.innerHTML = view_boot(); return; }
+  let html = '';
+  if(sim) html += view_seats();
+  if(writeBlocked) html += '<div class="notice err">This page couldn’t save your move. Check your connection and try again.</div>';
+  if(!code) html += view_home();
+  else if(game===null) html += view_nogame();
+  else if(game.phase==='lobby') html += view_lobby();
+  else if(game.phase==='final') html += view_final();
+  else html += view_round();
+  if(game && game.phase!=='lobby' && game.phase!=='final') html += view_scoreboard();
+  app.innerHTML = html;
+  bind();
+}
+
+function view_seats(){
+  const qm = qmId();
+  return `<div class="seats">
+    <p class="eyebrow">Demo: tap a player to see their phone</p>
+    <div class="seatrow">${SIM_SEATS.map(s=>`<button class="seat ${s.id===PID?'on':''}" data-act="seat" data-id="${s.id}">${esc(s.name)}${s.id===qm?' <span class="qm-tag">QM</span>':''}</button>`).join('')}</div>
+    <button class="ghost small" data-act="exitdemo">Exit demo</button>
+  </div>`;
+}
+function view_boot(){ return '<div class="card"><p class="eyebrow">Quiz Master</p><h1>Connecting…</h1><p class="muted">If this doesn’t clear in a few seconds, check your connection and reload.</p></div>'; }
+
+function view_home(){
+  return `<div class="card">
+    <p class="eyebrow">Quiz Master</p>
+    <h1>Pick the question that splits the room.</h1>
+    <p class="muted">The Quiz Master role passes every question. You score most when about half the others get it right, nothing if everyone or no one does.</p>
+  </div>
+  <div class="card">
+    <h2>Start a new game</h2>
+    <button class="primary" data-act="create" ${busy?'disabled':''}>Create game</button>
+  </div>
+  <div class="card">
+    <h2>Join a game</h2>
+    <label for="joincode">Game code</label>
+    <input id="joincode" maxlength="4" autocapitalize="characters" placeholder="e.g. K7PX">
+    <button data-act="joincode">Join</button>
+  </div>
+  <div class="card">
+    <h2>Try it solo</h2>
+    <p class="muted">A 4-player demo on this one device. Switch between players’ screens to walk through a full game.</p>
+    <button data-act="demo" ${busy?'disabled':''}>Start 4-player demo</button>
+  </div>`;
+}
+function view_nogame(){
+  return `<div class="card"><h2>No game with code ${esc(code)}</h2><p class="muted">Check the code, or start a new game.</p><button data-act="leave">Back</button></div>`;
+}
+function view_lobby(){
+  const me = players[PID];
+  const list = Object.entries(players).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0));
+  let html = `<div class="card">
+    <p class="eyebrow">Game code</p>
+    <div class="code">${esc(code)}</div>
+    <p class="muted">Share this page’s link with <b>#${esc(code)}</b> on the end, or have players enter the code.</p>
+    <button class="ghost" data-act="copylink">Copy join link</button>
+  </div>`;
+  if(!me){
+    html += `<div class="card">
+      <h2>Join the game</h2>
+      <div><label for="name">Your name</label><input id="name" value="${esc(draft.name)}" autocomplete="given-name" enterkeyhint="next" placeholder="Mark"></div>
+      <div><label for="year">Year you were born</label><input id="year" value="${esc(draft.year)}" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" placeholder="1975"></div>
+      <button class="primary" data-act="join" ${busy?'disabled':''}>Join</button>
+    </div>`;
+  }
+  html += `<div class="card">
+    <h2>Players (${list.length})</h2>
+    <div class="plist">${list.map(([id,p])=>`<div class="prow"><span class="name">${esc(p.name)}</span><span class="muted">${esc(p.year)}</span>${id===PID?'<span class="chip">you</span>':''}</div>`).join('')||'<p class="muted">Waiting for players to join…</p>'}</div>
+    ${me?`<p class="muted">Has everyone joined? Anyone can confirm. The first Quiz Master is picked at random.</p><button class="primary" data-act="start" ${list.length<2||busy?'disabled':''}>Everyone’s here, start</button>`:''}
+  </div>`;
+  return html;
+}
+
+function view_round(){
+  const cat = CATS[game.cat];
+  const qm = qmId();
+  const n = game.order.length;
+  const header = `<div class="cat-band" style="background:${cat.color}">
+    <p class="eyebrow">Question ${game.turn+1} of ${n*CATS.length} · Quiz Master: ${esc(nameOf(qm))}</p>
+    <h2>${esc(cat.name)}</h2>
+  </div>`;
+  if(!players[PID]) return header + `<div class="card"><h2>This game is already in progress</h2><p class="muted">You can watch the scores, but you can’t join until the next game.</p></div>`;
+  const fn = { pick: view_pick, answer: view_answer, judge: view_judge, reveal: view_reveal }[game.phase] || (()=>'' );
+  return header + fn(qm);
+}
+
+function view_pick(qm){
+  if(isQM()){
+    return `<div class="card">
+      <p class="eyebrow">You’re the Quiz Master</p>
+      <h2>Pick a question the room will split on.</h2>
+      <div class="stack">${(game.options||[]).map((o,i)=>`<button class="qopt" data-act="pick" data-i="${i}" ${busy?'disabled':''}><span class="diff">${diffName(o.d)}${pips(o.d)}</span><span>${esc(o.q)}</span></button>`).join('')}</div>
+    </div>
+    <div class="card">
+      <h3>Or ask your own</h3>
+      <div><label for="custom">Question</label><input id="custom" value="${esc(draft.custom)}" placeholder="Type a question"></div>
+      <div><label for="customa">Answer</label><input id="customa" value="${esc(draft.customA)}" placeholder="The answer you’ll reveal"></div>
+      <button data-act="pickcustom" ${busy?'disabled':''}>Ask this question</button>
+    </div>`;
+  }
+  return `<div class="card"><div class="wait"><span class="dot"></span><h2>${esc(nameOf(qm))} is choosing a question…</h2></div></div>`;
+}
+
+function view_answer(qm){
+  const others = game.order.filter(id=>id!==qm);
+  const inRound = id => answers[id] && answers[id].round===game.round;
+  const done = others.filter(inRound);
+  const q = game.question;
+  const qcard = `<div class="card"><p class="eyebrow">${q.custom?'Quiz Master’s own question':diffName(q.d)}</p><p class="big-q">${esc(q.q)}</p></div>`;
+  if(isQM()){
+    return qcard + `<div class="card">
+      <h3>Answers in: ${done.length} of ${others.length}</h3>
+      <div class="plist">${others.map(id=>`<div class="prow"><span class="name grow">${esc(nameOf(id))}</span><span class="muted">${inRound(id)?'answered':'thinking…'}</span></div>`).join('')}</div>
+      <p class="muted">When everyone’s in, have each player say their answer out loud, then mark them.</p>
+      ${sim&&done.length<others.length?`<button class="ghost" data-act="autoanswer" ${busy?'disabled':''}>Demo: fill in the others’ answers</button>`:''}
+      <button class="primary" data-act="close" ${busy?'disabled':''}>${done.length>=others.length?'Everyone’s in — hear the answers':'Close answers early'}</button>
+    </div>`;
+  }
+  if(inRound(PID)){
+    return qcard + `<div class="card"><p class="eyebrow">Your answer</p><p class="big-q">${esc(answers[PID].text)}</p><p class="muted">Locked in. Waiting for the others (${done.length} of ${others.length}).</p><button class="ghost" data-act="changeanswer">Change it</button></div>`;
+  }
+  return qcard + `<div class="card">
+    <label for="answer">Your answer</label>
+    <input id="answer" class="answer-box" value="${esc(draft.answer)}" placeholder="Type your answer" autocomplete="off" autocorrect="off" enterkeyhint="done">
+    <button class="primary" data-act="answer" ${busy?'disabled':''}>Lock it in</button>
+  </div>`;
+}
+
+function view_judge(qm){
+  const others = game.order.filter(id=>id!==qm);
+  const q = game.question;
+  const ansOf = id => (answers[id]&&answers[id].round===game.round)?answers[id].text:'';
+  if(isQM()){
+    const correct = others.filter(id=>judged[id]).length;
+    return `<div class="card"><p class="eyebrow">Question</p><p class="big-q">${esc(q.q)}</p><p class="eyebrow">Answer</p><p class="big-q" style="color:${CATS[game.cat].color}">${esc(q.a)}</p></div>
+    <div class="card">
+      <h3>Go around the room, then mark each answer</h3>
+      <div class="plist">${others.map(id=>`<div class="prow"><div class="grow"><div class="name">${esc(nameOf(id))}</div><div class="ans">${esc(ansOf(id))||'<i>no answer</i>'}</div></div>
+        <div class="judge"><button data-act="mark" data-id="${id}" data-v="1" class="${judged[id]===true?'on-good':''}" aria-label="Correct">✓</button><button data-act="mark" data-id="${id}" data-v="0" class="${judged[id]===false?'on-bad':''}" aria-label="Incorrect">✗</button></div></div>`).join('')}</div>
+      <div class="notice">If you reveal now: ${correct} of ${others.length} correct → you earn <b>${qmPoints(correct,others.length)}</b> of ${QM_MAX}.</div>
+      <button class="primary" data-act="reveal" ${busy||others.some(id=>judged[id]===undefined)?'disabled':''}>Reveal answer and scores</button>
+    </div>`;
+  }
+  return `<div class="card"><p class="eyebrow">Question</p><p class="big-q">${esc(q.q)}</p></div>
+  <div class="card"><p class="eyebrow">Your answer</p><p class="big-q">${esc(ansOf(PID))||'<i>none</i>'}</p><p class="muted">Say it out loud when ${esc(nameOf(qm))} asks. The reveal is coming.</p></div>`;
+}
+
+function view_reveal(qm){
+  const r = game.results, q = game.question, cat = CATS[game.cat];
+  const others = game.order.filter(id=>id!==qm);
+  const n = game.order.length, last = game.turn >= n*CATS.length-1;
+  const nextQm = game.order[(game.turn+1)%n], nextCat = CATS[Math.floor((game.turn+1)/n)];
+  return `<div class="card"><p class="eyebrow">Question</p><p class="big-q">${esc(q.q)}</p><p class="eyebrow">Answer</p><p class="big-q" style="color:${cat.color}">${esc(q.a)}</p></div>
+  <div class="card">
+    <div class="row"><h3 class="grow">${r.correct} of ${r.answerers} got it</h3><span class="delta">${esc(nameOf(qm))} +${r.qmPts}</span></div>
+    <div class="curve">${[0,.25,.5,.75,1].map(p=>`<span><b>${Math.round(QM_MAX*4*p*(1-p))}</b>${Math.round(p*100)}%</span>`).join('')}</div>
+    <div class="plist">${others.map(id=>`<div class="prow"><div class="grow"><div class="name">${esc(nameOf(id))}</div><div class="ans">${esc(r.answers[id])||'<i>no answer</i>'}</div></div><span class="mark ${r.marks[id]?'good':'bad'}">${r.marks[id]?'+'+PLAYER_POINTS:'0'}</span></div>`).join('')}</div>
+    ${isQM()?`<button class="primary" data-act="next" ${busy?'disabled':''}>${last?'See final scores':'Pass to '+esc(nameOf(nextQm))+' · '+esc(nextCat.name)}</button>`:`<p class="muted">Waiting for ${esc(nameOf(qm))} to move on.</p>`}
+  </div>`;
+}
+
+function view_scoreboard(){
+  const qm = qmId();
+  const rows = game.order.slice().sort((a,b)=>(game.scores[b]||0)-(game.scores[a]||0));
+  return `<div class="scoreboard"><p class="eyebrow">Scores</p><div class="rows">${rows.map(id=>`<div class="srow ${id===PID?'me':''}"><span class="nm">${esc(nameOf(id))}${id===PID?' (you)':''} ${id===qm?'<span class="qm-tag">QM</span>':''}</span><span class="sc">${game.scores[id]||0}</span></div>`).join('')}</div></div>`;
+}
+
+function view_final(){
+  const rows = game.order.slice().sort((a,b)=>(game.scores[b]||0)-(game.scores[a]||0));
+  const top = game.scores[rows[0]]||0;
+  return `<div class="card"><p class="eyebrow">Final scores</p><h1>${esc(nameOf(rows[0]))} wins</h1></div>
+  <div class="final">${rows.map((id,i)=>`<div class="frow ${(game.scores[id]||0)===top?'first':''}"><span class="rank">${i+1}</span><span class="grow name">${esc(nameOf(id))}${id===PID?' (you)':''}</span><span class="sc delta">${game.scores[id]||0}</span></div>`).join('')}</div>
+  <div class="card"><button class="primary" data-act="again" ${busy?'disabled':''}>Play again with the same code</button><button class="ghost" data-act="leave">Leave</button></div>`;
+}
+
+// ---------- Event binding ----------
+function bind(){
+  app.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', e=>{ const m={name:'name',year:'year',answer:'answer',custom:'custom',customa:'customA'}; if(m[e.target.id]) draft[m[e.target.id]]=e.target.value; });
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ const b=inp.closest('.card').querySelector('button.primary, button[data-act]'); if(b) b.click(); } });
+  });
+  app.querySelectorAll('[data-act]').forEach(btn=>btn.addEventListener('click', ()=>act(btn.dataset)));
+}
+function act(d){
+  switch(d.act){
+    case 'create': return safeWrite(createGame);
+    case 'demo': return safeWrite(startDemo);
+    case 'seat': return switchSeat(d.id);
+    case 'autoanswer': return safeWrite(autoAnswerOthers);
+    case 'exitdemo': { sim=false; code=null; db=realDb; PID=store('qm.pid'); location.hash=''; subscribe(); return; }
+    case 'joincode': { const v=(document.getElementById('joincode').value||'').trim().toUpperCase(); if(/^[A-Z0-9]{4}$/.test(v)){ code=v; location.hash=v; subscribe(); } return; }
+    case 'leave': sim=false; code=null; db=realDb; PID=store('qm.pid'); location.hash=''; subscribe(); return;
+    case 'copylink': { const url=location.href.split('#')[0]+'#'+code; navigator.clipboard.writeText(url).then(()=>{},()=>{}); return; }
+    case 'join': { const name=draft.name.trim(), year=draft.year.trim(); if(!name||!/^\d{4}$/.test(year)) return; return safeWrite(()=>joinGame(name,year)); }
+    case 'start': return safeWrite(startGame);
+    case 'pick': return safeWrite(()=>chooseQuestion(game.options[+d.i]));
+    case 'pickcustom': { const q=draft.custom.trim(), a=draft.customA.trim(); if(!q||!a) return; draft.custom=''; draft.customA=''; return safeWrite(()=>chooseQuestion({q,a,d:0})); }
+    case 'answer': { const t=draft.answer.trim(); if(!t) return; draft.answer=''; return safeWrite(()=>submitAnswer(t)); }
+    case 'changeanswer': draft.answer=answers[PID].text; return safeWrite(()=>answerRef().delete());
+    case 'close': return safeWrite(closeAnswers);
+    case 'mark': judged[d.id] = d.v==='1'; render(); return;
+    case 'reveal': return safeWrite(reveal);
+    case 'next': return safeWrite(nextRound);
+    case 'again': return safeWrite(playAgain);
+  }
+}
+
+// ---------- Boot ----------
+let realDb = null;
+window.addEventListener('hashchange', ()=>{ if(sim) return; const c=codeFromHash(); if(c!==code){ code=c; if(db) subscribe(); } });
+render();
+(function(){
+  if(!FIREBASE_CONFIG || !FIREBASE_CONFIG.projectId || !window.firebase){
+    app.innerHTML='<div class="card"><p class="eyebrow">Quiz Master</p><h2>Live games aren\u2019t set up yet</h2><p class="muted">The shared game store hasn\u2019t been configured on this site. You can still try the 4-player demo on this device.</p><button data-act="demo">Start 4-player demo</button></div>';
+    bind(); return;
+  }
+  firebase.initializeApp(FIREBASE_CONFIG);
+  realDb = firebase.firestore();
+  db = realDb; subscribe();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Anyone who knows a game code can play; nothing else is readable or writable.
+    match /games/{code} {
+      allow read, write: if code.size() == 4;
+      match /{sub}/{doc} {
+        allow read, write: if code.size() == 4 && (sub == 'players' || sub == 'answers');
+      }
+    }
+  }
+}
