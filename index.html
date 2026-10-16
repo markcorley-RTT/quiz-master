@@ -78,7 +78,7 @@ label{font-size:.85rem;font-weight:700;display:block;margin-bottom:4px}
 .mark.good{color:var(--good)}
 .mark.bad{color:var(--bad)}
 .delta{font-variant-numeric:tabular-nums;font-weight:800;font-family:var(--display)}
-.scoreboard{position:sticky;bottom:env(safe-area-inset-bottom,0px);margin-top:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 12px;display:flex;flex-direction:column;gap:4px;box-shadow:0 -6px 18px rgba(0,0,0,.08)}
+.scoreboard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
 .scoreboard .rows{display:flex;gap:6px 14px;flex-wrap:wrap}
 .scoreboard .srow{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-size:.95rem}
 .scoreboard .srow.me .nm{font-weight:800}
@@ -408,6 +408,13 @@ function groupKey(){
 }
 function playerYears(){ return Object.values(players).map(p=>+p.year).filter(y=>y>1900&&y<2030); }
 function setReady(catId){ return !generator() || sets[catId]!==undefined; }
+// Category schedule: a shuffled category order per game; the QM and the category both advance every
+// turn. Player p in round r hosts catOrder[(r + k*p) % 6], which gives every player all six categories
+// exactly once and keeps consecutive turns in different categories.
+function catOrder(){ return (game && Array.isArray(game.catOrder) && game.catOrder.length===CATS.length) ? game.catOrder : CATS.map(c=>c.id); }
+function catIdForTurn(t){ const n = (game&&game.order&&game.order.length)||1; const k = n===2?3:1; const r=Math.floor(t/n), p=t%n; return catOrder()[(r + k*p) % CATS.length]; }
+function catIndexForTurn(t){ return CATS.findIndex(c=>c.id===catIdForTurn(t)); }
+function totalTurns(){ return ((game&&game.order&&game.order.length)||0)*CATS.length; }
 
 async function ensureSet(catId){
   if(!generator() || sets[catId]!==undefined || genPending[catId]) return;
@@ -462,7 +469,7 @@ async function assignOptionsIfNeeded(){
   if(assigning===game.turn) return;
   assigning = game.turn;
   try{
-    const options = pickOptions(catId, game.usedIds);
+    const options = shuffle(pickOptions(catId, game.usedIds));
     const usedIds = (game.usedIds||[]).concat(options.map(o=>o.id));
     await gameRef().set({...game, options, usedIds});
     if(!sim && game.group){
@@ -470,8 +477,7 @@ async function assignOptionsIfNeeded(){
       const merged = groupSeen.concat(texts.filter(t=>!groupSeen.includes(t))).slice(-600);
       db.doc('groups/'+game.group).set({seen:merged, at:Date.now()}).catch(e=>console.warn(e));
     }
-    const nextCat = CATS[game.cat+1];
-    if(nextCat) ensureSet(nextCat.id);
+    for(const t of [game.turn+1, game.turn+2]){ if(t < totalTurns()) ensureSet(catIdForTurn(t)); }
   }catch(e){ console.error(e); assigning=null; }
 }
 
@@ -546,9 +552,10 @@ function subscribeGroup(){
 }
 
 // ---------- Actions ----------
+function freshGame(){ return {code, phase:'lobby', created: Date.now(), turn:0, cat:0, round:0, usedIds:[], order:[], scores:{}, catOrder: shuffle(CATS.map(c=>c.id))}; }
 async function createGame(){
   code = newCode();
-  await gameRef().set({code, phase:'lobby', created: Date.now(), turn:0, cat:0, round:0, usedIds:[], order:[], scores:{}});
+  await gameRef().set(freshGame());
   location.hash = code;
   subscribe();
 }
@@ -561,8 +568,9 @@ async function startGame(){
   const order = shuffle(ids);
   const scores = {}; ids.forEach(id=>scores[id]=0);
   sets = {}; assigning = null;
-  await gameRef().set({...game, phase:'pick', order, scores, turn:0, cat:0, round:0, usedIds:[], options:null, question:null, results:null, group: sim?null:groupKey(), ai: !!generator()});
-  ensureSet(CATS[0].id);
+  const catOrderNow = catOrder();
+  await gameRef().set({...game, phase:'pick', order, scores, turn:0, cat:CATS.findIndex(c=>c.id===catOrderNow[0]), round:0, usedIds:[], options:null, question:null, results:null, group: sim?null:groupKey(), ai: !!generator(), catOrder: catOrderNow});
+  ensureSet(catOrderNow[0]);
 }
 async function chooseQuestion(opt){
   judged = {};
@@ -587,14 +595,13 @@ async function reveal(){
   await gameRef().set({...game, phase:'reveal', scores, results});
 }
 async function nextRound(){
-  // The Quiz Master role passes every question; everyone hosts one question per category.
-  const turn = game.turn+1, n = game.order.length;
-  const cat = Math.floor(turn/n);
-  if(turn >= n*CATS.length){
+  // The Quiz Master role and the category both pass every question.
+  const turn = game.turn+1;
+  if(turn >= totalTurns()){
     await gameRef().set({...game, phase:'final', question:null, results:null});
     return;
   }
-  await gameRef().set({...game, phase:'pick', cat, turn, options:null, question:null, results:null});
+  await gameRef().set({...game, phase:'pick', cat: catIndexForTurn(turn), turn, options:null, question:null, results:null});
 }
 async function useBankNow(){
   const catId = CATS[game.cat].id;
@@ -602,7 +609,7 @@ async function useBankNow(){
 }
 async function startDemo(){
   sim = true; db = localStore(); code = 'DEMO'; PID = SIM_SEATS[0].id; judged = {};
-  await gameRef().set({code, phase:'lobby', created: Date.now(), turn:0, cat:0, round:0, usedIds:[], order:[], scores:{}});
+  await gameRef().set(freshGame());
   for(const [i,s] of SIM_SEATS.entries()) await playerRef(s.id).set({name:s.name, year:s.year, joined: Date.now()+i});
   subscribe();
 }
@@ -619,7 +626,7 @@ async function autoAnswerOthers(){
 async function playAgain(){
   judged={}; sets={}; assigning=null;
   for(const c of CATS){ try{ await setRef(c.id).delete(); }catch(e){} }
-  await gameRef().set({code, phase:'lobby', created: Date.now(), turn:0, cat:0, round:0, usedIds:[], order:[], scores:{}});
+  await gameRef().set(freshGame());
 }
 
 // ---------- Rendering ----------
@@ -639,7 +646,6 @@ function render(){
   else if(game.phase==='lobby') html += view_lobby();
   else if(game.phase==='final') html += view_final();
   else html += view_round();
-  if(game && game.phase!=='lobby' && game.phase!=='final') html += view_scoreboard();
   app.innerHTML = html;
   bind();
   subscribeGroup();
@@ -650,7 +656,8 @@ function pregenerateInLobby(){
   if(!game || game.phase!=='lobby' || sim || !generator()) return;
   const list = Object.entries(players).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0));
   if(!list.length || list[0][0]!==PID) return;   // only the first player's device writes questions
-  ensureSet(CATS[0].id);
+  const co = catOrder();
+  ensureSet(co[0]); if(list.length>=2) ensureSet(co[1]);
 }
 
 function view_seats(){
@@ -719,9 +726,9 @@ function view_round(){
   const qm = qmId();
   const n = game.order.length;
   const header = `<div class="cat-band" style="background:${cat.color}">
-    <p class="eyebrow">Question ${game.turn+1} of ${n*CATS.length} · Quiz Master: ${esc(nameOf(qm))}</p>
+    <p class="eyebrow">Question ${game.turn+1} of ${totalTurns()} · Quiz Master: ${esc(nameOf(qm))}</p>
     <h2>${esc(cat.name)}</h2>
-  </div>`;
+  </div>` + view_scoreboard();
   if(!players[PID]) return header + `<div class="card"><h2>This game is already in progress</h2><p class="muted">You can watch the scores, but you can’t join until the next game.</p></div>`;
   const fn = { pick: view_pick, answer: view_answer, judge: view_judge, reveal: view_reveal }[game.phase] || (()=>'' );
   return header + fn(qm);
@@ -739,7 +746,8 @@ function view_pick(qm){
     return `<div class="card">
       <p class="eyebrow">You’re the Quiz Master</p>
       <h2>Pick a question the room will split on.</h2>
-      <div class="stack">${(game.options||[]).map((o,i)=>`<button class="qopt" data-act="pick" data-i="${i}" ${busy?'disabled':''}><span class="diff">${diffName(o.d)}${pips(o.d)}</span><span>${esc(o.q)}</span></button>`).join('')}</div>
+      <p class="muted">Five questions, from gimme to stumper, in no particular order. Too easy or too hard scores you nothing.</p>
+      <div class="stack">${(game.options||[]).map((o,i)=>`<button class="qopt" data-act="pick" data-i="${i}" ${busy?'disabled':''}><span>${esc(o.q)}</span></button>`).join('')}</div>
     </div>
     <div class="card">
       <h3>Or ask your own</h3>
@@ -756,7 +764,7 @@ function view_answer(qm){
   const inRound = id => answers[id] && answers[id].round===game.round;
   const done = others.filter(inRound);
   const q = game.question;
-  const qcard = `<div class="card"><p class="eyebrow">${q.custom?'Quiz Master’s own question':diffName(q.d)}</p><p class="big-q">${esc(q.q)}</p></div>`;
+  const qcard = `<div class="card"><p class="eyebrow">${q.custom?'Quiz Master’s own question':'Question'}</p><p class="big-q">${esc(q.q)}</p></div>`;
   if(isQM()){
     return qcard + `<div class="card">
       <h3>Answers in: ${done.length} of ${others.length}</h3>
@@ -798,8 +806,8 @@ function view_judge(qm){
 function view_reveal(qm){
   const r = game.results, q = game.question, cat = CATS[game.cat];
   const others = game.order.filter(id=>id!==qm);
-  const n = game.order.length, last = game.turn >= n*CATS.length-1;
-  const nextQm = game.order[(game.turn+1)%n], nextCat = CATS[Math.floor((game.turn+1)/n)];
+  const n = game.order.length, last = game.turn >= totalTurns()-1;
+  const nextQm = game.order[(game.turn+1)%n], nextCat = last ? null : CATS[catIndexForTurn(game.turn+1)];
   return `<div class="card"><p class="eyebrow">Question</p><p class="big-q">${esc(q.q)}</p><p class="eyebrow">Answer</p><p class="big-q" style="color:${cat.color}">${esc(q.a)}</p></div>
   <div class="card">
     <div class="row"><h3 class="grow">${r.correct} of ${r.answerers} got it</h3><span class="delta">${esc(nameOf(qm))} +${r.qmPts}</span></div>
@@ -889,7 +897,7 @@ function makeGeminiGenerator(ai, getGenerativeModel, Schema){
     const oldest = years.length?Math.min(...years):1960;
     const prompt = `You write questions for a living-room trivia game played by friends. Category: ${cat.name} (in the spirit of the Trivial Pursuit "${cat.name}" wedge).
 Players were born in: ${years.length?years.join(', '):'the 1970s to 2000s'}. Favor subjects from roughly ${oldest} onward that these players lived through, mixed with timeless classics everyone grows up learning. Avoid events from the last 12 months.
-Write exactly ${per*5} questions: ${per} at each difficulty 1, 2, 3, 4 and 5. Difficulty 1 = nearly every adult knows it; 3 = a reasonably informed adult has a fair shot; 5 = only a committed trivia fan would know it.
+Write exactly ${per*5} questions: ${per} at each difficulty 1, 2, 3, 4 and 5. Difficulty 1 = a gimme: everyone at the table, including people who never play trivia, answers instantly (household names, the most famous landmarks, blockbuster films, grade-school facts); 2 = most adults know it; 3 = a reasonably informed adult has a fair shot; 4 = a regular trivia-night player would get it; 5 = only a committed trivia fan would know it.
 Rules: each question is at most 18 words and reads naturally aloud; each has one clear, verifiable answer of 1 to 5 words; no true/false, no multiple choice, no "which of these"; no two questions about the same subject; mostly U.S.-friendly but include some world items; the question must not contain its own answer. Set y to the year the subject is most associated with, or null if timeless.
 Do not reuse or closely paraphrase any of these questions the group has already seen:
 ${avoid.length?avoid.map(t=>'- '+t).join('\n'):'(none yet)'}
