@@ -400,7 +400,7 @@ let liveGen = null;       // async (cat, count, years, avoid) => [{q,a,d,y}]
 let genPending = {};
 let assigning = null;     // turn index whose options this client is currently writing
 function generator(){ return sim ? null : liveGen; }
-function setSize(){ const n = (game&&game.order&&game.order.length) || Object.keys(players).length || 2; return Math.max(10, n*5); }
+function setSize(){ const n = (game&&game.order&&game.order.length) || Object.keys(players).length || 2; return Math.max(4, n)*5; }
 function setRef(catId){ return db.doc('games/'+code+'/sets/'+catId); }
 function groupKey(){
   const names = Object.values(players).map(p=>(p.name||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'')).filter(Boolean).sort();
@@ -416,7 +416,7 @@ async function ensureSet(catId){
     const cat = CATS.find(c=>c.id===catId);
     const raw = await Promise.race([
       generator()(cat, setSize(), playerYears(), groupSeen.slice(-150)),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),30000))
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),90000))
     ]);
     const clean = (Array.isArray(raw)?raw:[]).filter(x=>x&&x.q&&x.a).map((x,i)=>({
       id:'g'+catId+'_'+i, d:Math.min(5,Math.max(1,Math.round(+x.d||3))), q:String(x.q).trim(), a:String(x.a).trim(), y:(+x.y>1000?+x.y:null)
@@ -537,7 +537,7 @@ function subscribe(){
 }
 let groupUnsub = null, groupSubKey = null;
 function subscribeGroup(){
-  const key = game && game.group;
+  const key = game && (game.group || (game.phase==='lobby' && !sim ? groupKey() : null));
   if(key===groupSubKey) return;
   if(groupUnsub){ groupUnsub(); groupUnsub=null; }
   groupSubKey = key; groupSeen = [];
@@ -618,6 +618,7 @@ async function autoAnswerOthers(){
 }
 async function playAgain(){
   judged={}; sets={}; assigning=null;
+  for(const c of CATS){ try{ await setRef(c.id).delete(); }catch(e){} }
   await gameRef().set({code, phase:'lobby', created: Date.now(), turn:0, cat:0, round:0, usedIds:[], order:[], scores:{}});
 }
 
@@ -643,6 +644,13 @@ function render(){
   bind();
   subscribeGroup();
   assignOptionsIfNeeded();
+  pregenerateInLobby();
+}
+function pregenerateInLobby(){
+  if(!game || game.phase!=='lobby' || sim || !generator()) return;
+  const list = Object.entries(players).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0));
+  if(!list.length || list[0][0]!==PID) return;   // only the first player's device writes questions
+  ensureSet(CATS[0].id);
 }
 
 function view_seats(){
@@ -700,6 +708,7 @@ function view_lobby(){
   html += `<div class="card">
     <h2>Players (${list.length})</h2>
     <div class="plist">${list.map(([id,p])=>`<div class="prow"><span class="name">${esc(p.name)}</span><span class="muted">${esc(p.year)}</span>${id===PID?'<span class="chip">you</span>':''}</div>`).join('')||'<p class="muted">Waiting for players to join…</p>'}</div>
+    ${me&&generator()&&!sim?`<p class="muted">${sets.geo&&sets.geo.source==='gemini'?'First round of questions is ready.':'Writing the first round of questions for this group in the background…'}</p>`:''}
     ${me?`<p class="muted">Has everyone joined? Anyone can confirm. The first Quiz Master is picked at random.</p><button class="primary" data-act="start" ${list.length<2||busy?'disabled':''}>Everyone’s here, start</button>`:''}
   </div>`;
   return html;
@@ -877,7 +886,7 @@ function makeGeminiGenerator(ai, getGenerativeModel, Schema){
     const prompt = `You write questions for a living-room trivia game played by friends. Category: ${cat.name} (in the spirit of the Trivial Pursuit "${cat.name}" wedge).
 Players were born in: ${years.length?years.join(', '):'the 1970s to 2000s'}. Favor subjects from roughly ${oldest} onward that these players lived through, mixed with timeless classics everyone grows up learning. Avoid events from the last 12 months.
 Write exactly ${per*5} questions: ${per} at each difficulty 1, 2, 3, 4 and 5. Difficulty 1 = nearly every adult knows it; 3 = a reasonably informed adult has a fair shot; 5 = only a committed trivia fan would know it.
-Rules: each question has one clear, verifiable answer of 1 to 5 words; no true/false, no multiple choice, no "which of these"; no two questions about the same subject; mostly U.S.-friendly but include some world items; the question must not contain its own answer. Set y to the year the subject is most associated with, or null if timeless.
+Rules: each question is at most 18 words and reads naturally aloud; each has one clear, verifiable answer of 1 to 5 words; no true/false, no multiple choice, no "which of these"; no two questions about the same subject; mostly U.S.-friendly but include some world items; the question must not contain its own answer. Set y to the year the subject is most associated with, or null if timeless.
 Do not reuse or closely paraphrase any of these questions the group has already seen:
 ${avoid.length?avoid.map(t=>'- '+t).join('\n'):'(none yet)'}
 Return only a JSON array of objects with keys q, a, d, y.`;
@@ -904,11 +913,11 @@ window.QM_boot = function(store, gen){
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
 import { getFirestore, doc, collection, setDoc, deleteDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 import { getAI, getGenerativeModel, GoogleAIBackend, Schema } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-ai.js";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app-check.js";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken as getAppCheckToken } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app-check.js";
 const cfg = window.FIREBASE_CONFIG;
 if(cfg && cfg.projectId){
   const fbApp = initializeApp(cfg);
-  if(cfg.appCheckSiteKey){ try{ initializeAppCheck(fbApp, {provider:new ReCaptchaEnterpriseProvider(cfg.appCheckSiteKey), isTokenAutoRefreshEnabled:true}); }catch(e){ console.warn('App Check init failed', e); } }
+  if(cfg.appCheckSiteKey){ try{ const ac = initializeAppCheck(fbApp, {provider:new ReCaptchaEnterpriseProvider(cfg.appCheckSiteKey), isTokenAutoRefreshEnabled:true}); getAppCheckToken(ac).catch(e=>console.warn('App Check token', e)); }catch(e){ console.warn('App Check init failed', e); } }
   const fs = getFirestore(fbApp);
   let gen = null;
   try{ gen = makeGeminiGenerator(getAI(fbApp, {backend:new GoogleAIBackend()}), getGenerativeModel, Schema); }catch(e){ console.warn('Question writer unavailable', e); }
