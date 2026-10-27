@@ -498,7 +498,8 @@ function pickOptions(catId, usedIds){
 // The Quiz Master's device assigns the five options once the category's set is ready, retires them,
 // records them as seen for the group, and prefetches the next category.
 async function assignOptionsIfNeeded(){
-  if(!game || game.phase!=='pick' || game.options || !isQM() || busy) return;
+  // The Quiz Master's device writes the options; in the single-device demo every seat is this device.
+  if(!game || game.phase!=='pick' || game.options || !(isQM()||sim) || busy) return;
   const catId = CATS[game.cat].id;
   if(!setReady(catId)){ ensureSet(catId); return; }
   if(assigning===game.turn) return;
