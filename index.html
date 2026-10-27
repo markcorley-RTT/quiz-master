@@ -100,6 +100,15 @@ label{font-size:.85rem;font-weight:700;display:block;margin-bottom:4px}
 .seat.on{background:var(--fg);color:var(--bg);border-color:transparent}
 .seat.on .qm-tag{background:var(--bg);color:var(--fg)}
 button.small{min-height:36px;padding:6px 10px;font-size:.85rem;align-self:flex-start}
+.toggle{display:flex;align-items:center;gap:10px;align-self:flex-start;background:transparent;font-weight:700}
+.toggle .knob{width:42px;height:24px;border-radius:999px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.toggle .knob::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.toggle.on .knob{background:var(--accent)}
+.toggle.on .knob::after{transform:translateX(18px)}
+.qopt.choice{flex-direction:row;align-items:center;gap:12px;font-size:1.1rem}
+.qopt .letter{flex:none;width:32px;height:32px;border-radius:8px;background:var(--soft);display:inline-flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:.95rem;margin-top:4px}
+.choices b{font-family:var(--display);margin-right:4px;color:var(--muted)}
 .wait{display:flex;align-items:center;gap:10px}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
@@ -139,258 +148,258 @@ function nationOf(id){ return NATIONS.find(n=>n.id===id); }
 // n: countries where the question counts as local knowledge; only offered when every player is from one of them.
 const BANK = [
   // Geography
-  {c:'geo',d:1,y:null,q:'What is the capital of France?',a:'Paris'},
-  {c:'geo',d:1,y:null,q:'Which is the largest ocean on Earth?',a:'The Pacific Ocean'},
-  {c:'geo',d:1,y:null,q:'On which continent is the Sahara Desert?',a:'Africa'},
-  {c:'geo',d:2,y:null,q:'Which river flows through Cairo?',a:'The Nile'},
-  {c:'geo',d:2,y:null,q:'What is the capital of Australia?',a:'Canberra'},
-  {c:'geo',d:2,y:null,q:'What is the smallest country in the world by area?',a:'Vatican City'},
-  {c:'geo',d:2,y:null,q:'Mount Everest sits on the border of Nepal and which other country?',a:'China (Tibet)'},
-  {c:'geo',d:3,y:null,q:'What is the capital of Canada?',a:'Ottawa'},
-  {c:'geo',d:3,y:null,q:'The Strait of Gibraltar separates Spain from which country?',a:'Morocco'},
-  {c:'geo',d:3,y:1991,q:'After Russia, which was the largest country to emerge from the 1991 breakup of the Soviet Union?',a:'Kazakhstan'},
-  {c:'geo',d:3,y:null,q:'What is the longest river in Asia?',a:'The Yangtze'},
-  {c:'geo',d:4,y:null,q:'What is the capital of Mongolia?',a:'Ulaanbaatar'},
-  {c:'geo',d:4,y:null,q:'Lake Titicaca lies between Peru and which other country?',a:'Bolivia'},
-  {c:'geo',d:4,y:2011,q:'Which country became independent in 2011, making it the world’s newest widely recognized nation?',a:'South Sudan'},
-  {c:'geo',d:4,y:null,q:'Which two countries share the longest international land border?',a:'Canada and the United States'},
-  {c:'geo',d:5,y:null,q:'What is the capital of Burkina Faso?',a:'Ouagadougou'},
-  {c:'geo',d:5,y:null,q:'Nuuk is the capital of which territory?',a:'Greenland'},
-  {c:'geo',d:5,y:null,q:'Which country is generally credited with having the most islands?',a:'Sweden'},
+  {c:'geo',d:1,y:null,q:'What is the capital of France?',a:'Paris',o:["Lyon", "Marseille", "Brussels"]},
+  {c:'geo',d:1,y:null,q:'Which is the largest ocean on Earth?',a:'The Pacific Ocean',o:["The Atlantic Ocean", "The Indian Ocean", "The Arctic Ocean"]},
+  {c:'geo',d:1,y:null,q:'On which continent is the Sahara Desert?',a:'Africa',o:["Asia", "Australia", "South America"]},
+  {c:'geo',d:2,y:null,q:'Which river flows through Cairo?',a:'The Nile',o:["The Tigris", "The Niger", "The Jordan"]},
+  {c:'geo',d:2,y:null,q:'What is the capital of Australia?',a:'Canberra',o:["Sydney", "Melbourne", "Perth"]},
+  {c:'geo',d:2,y:null,q:'What is the smallest country in the world by area?',a:'Vatican City',o:["Monaco", "San Marino", "Liechtenstein"]},
+  {c:'geo',d:2,y:null,q:'Mount Everest sits on the border of Nepal and which other country?',a:'China (Tibet)',o:["India", "Bhutan", "Pakistan"]},
+  {c:'geo',d:3,y:null,q:'What is the capital of Canada?',a:'Ottawa',o:["Toronto", "Montreal", "Vancouver"]},
+  {c:'geo',d:3,y:null,q:'The Strait of Gibraltar separates Spain from which country?',a:'Morocco',o:["Algeria", "Tunisia", "Portugal"]},
+  {c:'geo',d:3,y:1991,q:'After Russia, which was the largest country to emerge from the 1991 breakup of the Soviet Union?',a:'Kazakhstan',o:["Ukraine", "Uzbekistan", "Belarus"]},
+  {c:'geo',d:3,y:null,q:'What is the longest river in Asia?',a:'The Yangtze',o:["The Mekong", "The Ganges", "The Yellow River"]},
+  {c:'geo',d:4,y:null,q:'What is the capital of Mongolia?',a:'Ulaanbaatar',o:["Astana", "Tashkent", "Bishkek"]},
+  {c:'geo',d:4,y:null,q:'Lake Titicaca lies between Peru and which other country?',a:'Bolivia',o:["Chile", "Ecuador", "Argentina"]},
+  {c:'geo',d:4,y:2011,q:'Which country became independent in 2011, making it the world’s newest widely recognized nation?',a:'South Sudan',o:["East Timor", "Kosovo", "Eritrea"]},
+  {c:'geo',d:4,y:null,q:'Which two countries share the longest international land border?',a:'Canada and the United States',o:["Russia and China", "Russia and Kazakhstan", "Argentina and Chile"]},
+  {c:'geo',d:5,y:null,q:'What is the capital of Burkina Faso?',a:'Ouagadougou',o:["Bamako", "Niamey", "Accra"]},
+  {c:'geo',d:5,y:null,q:'Nuuk is the capital of which territory?',a:'Greenland',o:["Iceland", "The Faroe Islands", "Svalbard"]},
+  {c:'geo',d:5,y:null,q:'Which country is generally credited with having the most islands?',a:'Sweden',o:["Indonesia", "The Philippines", "Canada"]},
   // Entertainment
-  {c:'ent',d:1,y:1997,q:'Which 1997 film starred Leonardo DiCaprio and Kate Winslet aboard a doomed ocean liner?',a:'Titanic'},
-  {c:'ent',d:1,y:1980,q:'In the Star Wars saga, who is revealed to be Luke Skywalker’s father?',a:'Darth Vader (Anakin Skywalker)'},
-  {c:'ent',d:1,y:1994,q:'Which sitcom, starting in 1994, followed six friends living in Manhattan?',a:'Friends'},
-  {c:'ent',d:1,y:2013,q:'Which Disney film features the song “Let It Go”?',a:'Frozen'},
-  {c:'ent',d:2,y:1982,q:'Who directed E.T. the Extra-Terrestrial?',a:'Steven Spielberg'},
-  {c:'ent',d:2,y:1969,q:'Which band recorded the album Abbey Road?',a:'The Beatles'},
-  {c:'ent',d:2,y:2008,q:'Who played Tony Stark in the Marvel Iron Man films?',a:'Robert Downey Jr.'},
-  {c:'ent',d:2,y:1975,q:'Which 1975 film featured a great white shark terrorizing Amity Island?',a:'Jaws'},
-  {c:'ent',d:2,y:2019,q:'Which TV series ended in 2019 with a battle for the Iron Throne?',a:'Game of Thrones'},
-  {c:'ent',d:3,y:1972,q:'Who directed The Godfather?',a:'Francis Ford Coppola'},
-  {c:'ent',d:3,y:1991,q:'Which grunge band released the album Nevermind?',a:'Nirvana'},
-  {c:'ent',d:3,y:1999,q:'Which TV drama followed New Jersey mob boss Tony and his family?',a:'The Sopranos'},
-  {c:'ent',d:3,y:1984,q:'Which artist released the album Purple Rain?',a:'Prince'},
-  {c:'ent',d:3,y:2010,q:'Which Christopher Nolan film involves planting ideas inside dreams within dreams?',a:'Inception'},
-  {c:'ent',d:3,y:1986,q:'In which film does Tom Cruise play a naval aviator nicknamed Maverick?',a:'Top Gun'},
-  {c:'ent',d:4,y:1968,q:'Who directed 2001: A Space Odyssey?',a:'Stanley Kubrick'},
-  {c:'ent',d:4,y:1960,q:'Which Alfred Hitchcock film is set at the Bates Motel?',a:'Psycho'},
-  {c:'ent',d:4,y:2004,q:'Which band released the song “Mr. Brightside”?',a:'The Killers'},
-  {c:'ent',d:4,y:1994,q:'Which Tom Hanks film won Best Picture at the Oscars held in 1995?',a:'Forrest Gump'},
-  {c:'ent',d:5,y:1941,q:'Which Orson Welles film centers on the mystery of the word “Rosebud”?',a:'Citizen Kane'},
-  {c:'ent',d:5,y:1966,q:'Who composed the theme for The Good, the Bad and the Ugly?',a:'Ennio Morricone'},
-  {c:'ent',d:5,y:1950,q:'In which 1950 film does Gloria Swanson play faded silent-film star Norma Desmond?',a:'Sunset Boulevard'},
+  {c:'ent',d:1,y:1997,q:'Which 1997 film starred Leonardo DiCaprio and Kate Winslet aboard a doomed ocean liner?',a:'Titanic',o:["The Beach", "Poseidon", "Romeo + Juliet"]},
+  {c:'ent',d:1,y:1980,q:'In the Star Wars saga, who is revealed to be Luke Skywalker’s father?',a:'Darth Vader (Anakin Skywalker)',o:["Obi-Wan Kenobi", "Emperor Palpatine", "Han Solo"]},
+  {c:'ent',d:1,y:1994,q:'Which sitcom, starting in 1994, followed six friends living in Manhattan?',a:'Friends',o:["Seinfeld", "Will & Grace", "How I Met Your Mother"]},
+  {c:'ent',d:1,y:2013,q:'Which Disney film features the song “Let It Go”?',a:'Frozen',o:["Tangled", "Moana", "Encanto"]},
+  {c:'ent',d:2,y:1982,q:'Who directed E.T. the Extra-Terrestrial?',a:'Steven Spielberg',o:["George Lucas", "Robert Zemeckis", "Ridley Scott"]},
+  {c:'ent',d:2,y:1969,q:'Which band recorded the album Abbey Road?',a:'The Beatles',o:["The Rolling Stones", "The Kinks", "The Who"]},
+  {c:'ent',d:2,y:2008,q:'Who played Tony Stark in the Marvel Iron Man films?',a:'Robert Downey Jr.',o:["Chris Evans", "Mark Ruffalo", "Chris Hemsworth"]},
+  {c:'ent',d:2,y:1975,q:'Which 1975 film featured a great white shark terrorizing Amity Island?',a:'Jaws',o:["Deep Blue Sea", "Orca", "The Abyss"]},
+  {c:'ent',d:2,y:2019,q:'Which TV series ended in 2019 with a battle for the Iron Throne?',a:'Game of Thrones',o:["Vikings", "The Witcher", "Outlander"]},
+  {c:'ent',d:3,y:1972,q:'Who directed The Godfather?',a:'Francis Ford Coppola',o:["Martin Scorsese", "Brian De Palma", "Sidney Lumet"]},
+  {c:'ent',d:3,y:1991,q:'Which grunge band released the album Nevermind?',a:'Nirvana',o:["Pearl Jam", "Soundgarden", "Alice in Chains"]},
+  {c:'ent',d:3,y:1999,q:'Which TV drama followed New Jersey mob boss Tony and his family?',a:'The Sopranos',o:["Boardwalk Empire", "The Wire", "Goodfellas"]},
+  {c:'ent',d:3,y:1984,q:'Which artist released the album Purple Rain?',a:'Prince',o:["Michael Jackson", "Stevie Wonder", "Lionel Richie"]},
+  {c:'ent',d:3,y:2010,q:'Which Christopher Nolan film involves planting ideas inside dreams within dreams?',a:'Inception',o:["Interstellar", "Memento", "Tenet"]},
+  {c:'ent',d:3,y:1986,q:'In which film does Tom Cruise play a naval aviator nicknamed Maverick?',a:'Top Gun',o:["Days of Thunder", "Mission: Impossible", "Jerry Maguire"]},
+  {c:'ent',d:4,y:1968,q:'Who directed 2001: A Space Odyssey?',a:'Stanley Kubrick',o:["Steven Spielberg", "Ridley Scott", "Andrei Tarkovsky"]},
+  {c:'ent',d:4,y:1960,q:'Which Alfred Hitchcock film is set at the Bates Motel?',a:'Psycho',o:["Vertigo", "Rear Window", "The Birds"]},
+  {c:'ent',d:4,y:2004,q:'Which band released the song “Mr. Brightside”?',a:'The Killers',o:["The Strokes", "Kings of Leon", "Arctic Monkeys"]},
+  {c:'ent',d:4,y:1994,q:'Which Tom Hanks film won Best Picture at the Oscars held in 1995?',a:'Forrest Gump',o:["Philadelphia", "Apollo 13", "Saving Private Ryan"]},
+  {c:'ent',d:5,y:1941,q:'Which Orson Welles film centers on the mystery of the word “Rosebud”?',a:'Citizen Kane',o:["The Third Man", "Touch of Evil", "The Magnificent Ambersons"]},
+  {c:'ent',d:5,y:1966,q:'Who composed the theme for The Good, the Bad and the Ugly?',a:'Ennio Morricone',o:["John Williams", "Nino Rota", "Bernard Herrmann"]},
+  {c:'ent',d:5,y:1950,q:'In which 1950 film does Gloria Swanson play faded silent-film star Norma Desmond?',a:'Sunset Boulevard',o:["All About Eve", "A Star Is Born", "Singin’ in the Rain"]},
   // History
-  {c:'his',d:1,y:1969,q:'Who was the first person to walk on the Moon?',a:'Neil Armstrong'},
-  {c:'his',d:1,y:1776,q:'In what year was the U.S. Declaration of Independence adopted?',n:['us'],a:'1776'},
-  {c:'his',d:1,y:1989,q:'Which wall came down in 1989, symbolizing the end of the Cold War?',a:'The Berlin Wall'},
-  {c:'his',d:1,y:2001,q:'In what year did the September 11 attacks take place?',a:'2001'},
-  {c:'his',d:2,y:1912,q:'Which ocean liner sank on its maiden voyage in 1912?',a:'The Titanic'},
-  {c:'his',d:2,y:1945,q:'In what year did World War II end?',a:'1945'},
-  {c:'his',d:2,y:1865,q:'Who assassinated Abraham Lincoln?',n:['us'],a:'John Wilkes Booth'},
-  {c:'his',d:2,y:1963,q:'In which city was John F. Kennedy assassinated?',n:['us'],a:'Dallas'},
-  {c:'his',d:3,y:1215,q:'Which charter did King John of England agree to in 1215?',a:'Magna Carta'},
-  {c:'his',d:3,y:1917,q:'In which year did the Russian Revolution take place?',a:'1917'},
-  {c:'his',d:3,y:1974,q:'Which U.S. president resigned from office in 1974?',n:['us'],a:'Richard Nixon'},
-  {c:'his',d:3,y:1066,q:'Which 1066 battle made William the Conqueror King of England?',a:'The Battle of Hastings'},
-  {c:'his',d:3,y:1492,q:'Which explorer, sailing for Spain, reached the Americas in 1492?',a:'Christopher Columbus'},
-  {c:'his',d:4,y:1815,q:'At which 1815 battle was Napoleon finally defeated?',a:'Waterloo'},
-  {c:'his',d:4,y:1961,q:'Who was the first human to travel into space?',a:'Yuri Gagarin'},
-  {c:'his',d:4,y:1453,q:'Which city fell to the Ottoman Empire in 1453?',a:'Constantinople'},
-  {c:'his',d:4,y:1803,q:'Which 1803 land deal roughly doubled the size of the United States?',n:['us'],a:'The Louisiana Purchase'},
-  {c:'his',d:5,y:1648,q:'Which 1648 peace settlement ended the Thirty Years’ War?',a:'The Peace of Westphalia'},
-  {c:'his',d:5,y:null,q:'Who was the first emperor of a unified China?',a:'Qin Shi Huang'},
-  {c:'his',d:5,y:1381,q:'Who led the Peasants’ Revolt in England in 1381?',n:['uk','ie'],a:'Wat Tyler'},
-  {c:'his',d:5,y:1856,q:'Which war, which ended in 1856, included the Charge of the Light Brigade?',a:'The Crimean War'},
+  {c:'his',d:1,y:1969,q:'Who was the first person to walk on the Moon?',a:'Neil Armstrong',o:["Buzz Aldrin", "John Glenn", "Alan Shepard"]},
+  {c:'his',d:1,y:1776,q:'In what year was the U.S. Declaration of Independence adopted?',n:['us'],a:'1776',o:["1774", "1781", "1787"]},
+  {c:'his',d:1,y:1989,q:'Which wall came down in 1989, symbolizing the end of the Cold War?',a:'The Berlin Wall',o:["The Iron Curtain", "The Warsaw Wall", "The Prague Wall"]},
+  {c:'his',d:1,y:2001,q:'In what year did the September 11 attacks take place?',a:'2001',o:["2000", "2002", "1999"]},
+  {c:'his',d:2,y:1912,q:'Which ocean liner sank on its maiden voyage in 1912?',a:'The Titanic',o:["The Lusitania", "The Britannic", "The Olympic"]},
+  {c:'his',d:2,y:1945,q:'In what year did World War II end?',a:'1945',o:["1944", "1946", "1943"]},
+  {c:'his',d:2,y:1865,q:'Who assassinated Abraham Lincoln?',n:['us'],a:'John Wilkes Booth',o:["Lee Harvey Oswald", "Charles Guiteau", "Leon Czolgosz"]},
+  {c:'his',d:2,y:1963,q:'In which city was John F. Kennedy assassinated?',n:['us'],a:'Dallas',o:["Houston", "Memphis", "Los Angeles"]},
+  {c:'his',d:3,y:1215,q:'Which charter did King John of England agree to in 1215?',a:'Magna Carta',o:["The Bill of Rights", "The Domesday Book", "The Petition of Right"]},
+  {c:'his',d:3,y:1917,q:'In which year did the Russian Revolution take place?',a:'1917',o:["1905", "1914", "1921"]},
+  {c:'his',d:3,y:1974,q:'Which U.S. president resigned from office in 1974?',n:['us'],a:'Richard Nixon',o:["Gerald Ford", "Lyndon Johnson", "Spiro Agnew"]},
+  {c:'his',d:3,y:1066,q:'Which 1066 battle made William the Conqueror King of England?',a:'The Battle of Hastings',o:["The Battle of Stamford Bridge", "The Battle of Agincourt", "The Battle of Bosworth"]},
+  {c:'his',d:3,y:1492,q:'Which explorer, sailing for Spain, reached the Americas in 1492?',a:'Christopher Columbus',o:["Ferdinand Magellan", "Amerigo Vespucci", "Vasco da Gama"]},
+  {c:'his',d:4,y:1815,q:'At which 1815 battle was Napoleon finally defeated?',a:'Waterloo',o:["Trafalgar", "Austerlitz", "Leipzig"]},
+  {c:'his',d:4,y:1961,q:'Who was the first human to travel into space?',a:'Yuri Gagarin',o:["Alan Shepard", "John Glenn", "Valentina Tereshkova"]},
+  {c:'his',d:4,y:1453,q:'Which city fell to the Ottoman Empire in 1453?',a:'Constantinople',o:["Athens", "Vienna", "Jerusalem"]},
+  {c:'his',d:4,y:1803,q:'Which 1803 land deal roughly doubled the size of the United States?',n:['us'],a:'The Louisiana Purchase',o:["The Gadsden Purchase", "The Alaska Purchase", "The Oregon Treaty"]},
+  {c:'his',d:5,y:1648,q:'Which 1648 peace settlement ended the Thirty Years’ War?',a:'The Peace of Westphalia',o:["The Treaty of Utrecht", "The Peace of Augsburg", "The Congress of Vienna"]},
+  {c:'his',d:5,y:null,q:'Who was the first emperor of a unified China?',a:'Qin Shi Huang',o:["Kublai Khan", "Han Wudi", "Sun Yat-sen"]},
+  {c:'his',d:5,y:1381,q:'Who led the Peasants’ Revolt in England in 1381?',n:['uk','ie'],a:'Wat Tyler',o:["Jack Cade", "Robin Hood", "Oliver Cromwell"]},
+  {c:'his',d:5,y:1856,q:'Which war, which ended in 1856, included the Charge of the Light Brigade?',a:'The Crimean War',o:["The Boer War", "The Napoleonic Wars", "The Franco-Prussian War"]},
   // Arts & Literature
-  {c:'art',d:1,y:null,q:'Who painted the Mona Lisa?',a:'Leonardo da Vinci'},
-  {c:'art',d:1,y:null,q:'Who wrote Romeo and Juliet?',a:'William Shakespeare'},
-  {c:'art',d:1,y:1997,q:'Who wrote the Harry Potter series?',a:'J.K. Rowling'},
-  {c:'art',d:1,y:1843,q:'Who wrote A Christmas Carol?',a:'Charles Dickens'},
-  {c:'art',d:2,y:null,q:'Who painted The Starry Night?',a:'Vincent van Gogh'},
-  {c:'art',d:2,y:1960,q:'Who wrote To Kill a Mockingbird?',a:'Harper Lee'},
-  {c:'art',d:2,y:1949,q:'Who wrote the novel Nineteen Eighty-Four?',a:'George Orwell'},
-  {c:'art',d:2,y:null,q:'Which Renaissance artist sculpted the statue of David in Florence?',a:'Michelangelo'},
-  {c:'art',d:3,y:1925,q:'Who wrote The Great Gatsby?',a:'F. Scott Fitzgerald'},
-  {c:'art',d:3,y:1937,q:'Who painted Guernica?',a:'Pablo Picasso'},
-  {c:'art',d:3,y:1813,q:'Who wrote Pride and Prejudice?',a:'Jane Austen'},
-  {c:'art',d:3,y:1954,q:'Who wrote The Lord of the Rings?',a:'J.R.R. Tolkien'},
-  {c:'art',d:3,y:1931,q:'Who painted The Persistence of Memory, the one with the melting clocks?',a:'Salvador Dalí'},
-  {c:'art',d:4,y:1667,q:'Who wrote the epic poem Paradise Lost?',a:'John Milton'},
-  {c:'art',d:4,y:1866,q:'Who wrote Crime and Punishment?',a:'Fyodor Dostoevsky'},
-  {c:'art',d:4,y:null,q:'Which Dutch painter created Girl with a Pearl Earring?',a:'Johannes Vermeer'},
-  {c:'art',d:4,y:1967,q:'Who wrote One Hundred Years of Solitude?',a:'Gabriel García Márquez'},
-  {c:'art',d:5,y:null,q:'Who wrote The Divine Comedy?',a:'Dante Alighieri'},
-  {c:'art',d:5,y:1922,q:'Who wrote Ulysses, a novel set in Dublin on a single day?',a:'James Joyce'},
-  {c:'art',d:5,y:null,q:'Which Japanese artist created the woodblock print The Great Wave off Kanagawa?',a:'Hokusai'},
-  {c:'art',d:5,y:1948,q:'Who painted Christina’s World?',a:'Andrew Wyeth'},
+  {c:'art',d:1,y:null,q:'Who painted the Mona Lisa?',a:'Leonardo da Vinci',o:["Michelangelo", "Raphael", "Botticelli"]},
+  {c:'art',d:1,y:null,q:'Who wrote Romeo and Juliet?',a:'William Shakespeare',o:["Christopher Marlowe", "Geoffrey Chaucer", "Ben Jonson"]},
+  {c:'art',d:1,y:1997,q:'Who wrote the Harry Potter series?',a:'J.K. Rowling',o:["Philip Pullman", "Roald Dahl", "Suzanne Collins"]},
+  {c:'art',d:1,y:1843,q:'Who wrote A Christmas Carol?',a:'Charles Dickens',o:["Robert Louis Stevenson", "Thomas Hardy", "Lewis Carroll"]},
+  {c:'art',d:2,y:null,q:'Who painted The Starry Night?',a:'Vincent van Gogh',o:["Claude Monet", "Paul Gauguin", "Paul Cézanne"]},
+  {c:'art',d:2,y:1960,q:'Who wrote To Kill a Mockingbird?',a:'Harper Lee',o:["John Steinbeck", "Truman Capote", "Flannery O’Connor"]},
+  {c:'art',d:2,y:1949,q:'Who wrote the novel Nineteen Eighty-Four?',a:'George Orwell',o:["Aldous Huxley", "Ray Bradbury", "H.G. Wells"]},
+  {c:'art',d:2,y:null,q:'Which Renaissance artist sculpted the statue of David in Florence?',a:'Michelangelo',o:["Donatello", "Leonardo da Vinci", "Bernini"]},
+  {c:'art',d:3,y:1925,q:'Who wrote The Great Gatsby?',a:'F. Scott Fitzgerald',o:["Ernest Hemingway", "John Steinbeck", "William Faulkner"]},
+  {c:'art',d:3,y:1937,q:'Who painted Guernica?',a:'Pablo Picasso',o:["Salvador Dalí", "Joan Miró", "Francisco Goya"]},
+  {c:'art',d:3,y:1813,q:'Who wrote Pride and Prejudice?',a:'Jane Austen',o:["Charlotte Brontë", "Emily Brontë", "George Eliot"]},
+  {c:'art',d:3,y:1954,q:'Who wrote The Lord of the Rings?',a:'J.R.R. Tolkien',o:["C.S. Lewis", "George R.R. Martin", "Terry Pratchett"]},
+  {c:'art',d:3,y:1931,q:'Who painted The Persistence of Memory, the one with the melting clocks?',a:'Salvador Dalí',o:["René Magritte", "Pablo Picasso", "Max Ernst"]},
+  {c:'art',d:4,y:1667,q:'Who wrote the epic poem Paradise Lost?',a:'John Milton',o:["John Donne", "Geoffrey Chaucer", "Edmund Spenser"]},
+  {c:'art',d:4,y:1866,q:'Who wrote Crime and Punishment?',a:'Fyodor Dostoevsky',o:["Leo Tolstoy", "Anton Chekhov", "Ivan Turgenev"]},
+  {c:'art',d:4,y:null,q:'Which Dutch painter created Girl with a Pearl Earring?',a:'Johannes Vermeer',o:["Rembrandt", "Frans Hals", "Pieter Bruegel"]},
+  {c:'art',d:4,y:1967,q:'Who wrote One Hundred Years of Solitude?',a:'Gabriel García Márquez',o:["Jorge Luis Borges", "Mario Vargas Llosa", "Isabel Allende"]},
+  {c:'art',d:5,y:null,q:'Who wrote The Divine Comedy?',a:'Dante Alighieri',o:["Petrarch", "Boccaccio", "Virgil"]},
+  {c:'art',d:5,y:1922,q:'Who wrote Ulysses, a novel set in Dublin on a single day?',a:'James Joyce',o:["Samuel Beckett", "W.B. Yeats", "Oscar Wilde"]},
+  {c:'art',d:5,y:null,q:'Which Japanese artist created the woodblock print The Great Wave off Kanagawa?',a:'Hokusai',o:["Hiroshige", "Utamaro", "Yayoi Kusama"]},
+  {c:'art',d:5,y:1948,q:'Who painted Christina’s World?',a:'Andrew Wyeth',o:["Edward Hopper", "Grant Wood", "Norman Rockwell"]},
   // Science & Nature
-  {c:'sci',d:1,y:null,q:'What is the chemical formula for water?',a:'H₂O'},
-  {c:'sci',d:1,y:null,q:'Which planet is known as the Red Planet?',a:'Mars'},
-  {c:'sci',d:1,y:null,q:'How many legs does a spider have?',a:'Eight'},
-  {c:'sci',d:2,y:null,q:'Which gas do plants take in from the air for photosynthesis?',a:'Carbon dioxide'},
-  {c:'sci',d:2,y:null,q:'What is the largest organ of the human body?',a:'The skin'},
-  {c:'sci',d:2,y:null,q:'What is the hardest naturally occurring substance?',a:'Diamond'},
-  {c:'sci',d:2,y:null,q:'What is the chemical symbol for gold?',a:'Au'},
-  {c:'sci',d:2,y:null,q:'What is the pH of pure water?',a:'7 (neutral)'},
-  {c:'sci',d:3,y:null,q:'What is the most abundant gas in Earth’s atmosphere?',a:'Nitrogen'},
-  {c:'sci',d:3,y:null,q:'Which part of the cell is often called its powerhouse?',a:'The mitochondrion'},
-  {c:'sci',d:3,y:1953,q:'Which two scientists published the double-helix structure of DNA in 1953?',a:'James Watson and Francis Crick'},
-  {c:'sci',d:3,y:null,q:'What is the largest animal ever known to have lived?',a:'The blue whale'},
-  {c:'sci',d:3,y:null,q:'What is the most abundant element in the universe?',a:'Hydrogen'},
-  {c:'sci',d:3,y:null,q:'What is the SI unit of electrical resistance?',a:'The ohm'},
-  {c:'sci',d:4,y:null,q:'Which metal is liquid at room temperature?',a:'Mercury'},
-  {c:'sci',d:4,y:null,q:'What is the name of the bone in the upper arm?',a:'The humerus'},
-  {c:'sci',d:4,y:null,q:'How many bones are in the adult human body?',a:'206'},
-  {c:'sci',d:4,y:null,q:'What is the process called when a solid turns directly into a gas?',a:'Sublimation'},
-  {c:'sci',d:4,y:null,q:'What is the chemical symbol for tungsten?',a:'W'},
-  {c:'sci',d:5,y:1927,q:'Which physicist proposed the uncertainty principle in 1927?',a:'Werner Heisenberg'},
-  {c:'sci',d:5,y:null,q:'What is the heaviest element found naturally in significant amounts on Earth?',a:'Uranium'},
-  {c:'sci',d:5,y:null,q:'What is the closest star system to our Sun?',a:'Alpha Centauri'},
+  {c:'sci',d:1,y:null,q:'What is the chemical formula for water?',a:'H₂O',o:["CO₂", "H₂O₂", "HO"]},
+  {c:'sci',d:1,y:null,q:'Which planet is known as the Red Planet?',a:'Mars',o:["Venus", "Jupiter", "Mercury"]},
+  {c:'sci',d:1,y:null,q:'How many legs does a spider have?',a:'Eight',o:["Six", "Ten", "Twelve"]},
+  {c:'sci',d:2,y:null,q:'Which gas do plants take in from the air for photosynthesis?',a:'Carbon dioxide',o:["Oxygen", "Nitrogen", "Hydrogen"]},
+  {c:'sci',d:2,y:null,q:'What is the largest organ of the human body?',a:'The skin',o:["The liver", "The lungs", "The brain"]},
+  {c:'sci',d:2,y:null,q:'What is the hardest naturally occurring substance?',a:'Diamond',o:["Quartz", "Titanium", "Graphite"]},
+  {c:'sci',d:2,y:null,q:'What is the chemical symbol for gold?',a:'Au',o:["Ag", "Gd", "Go"]},
+  {c:'sci',d:2,y:null,q:'What is the pH of pure water?',a:'7 (neutral)',o:["0", "5", "10"]},
+  {c:'sci',d:3,y:null,q:'What is the most abundant gas in Earth’s atmosphere?',a:'Nitrogen',o:["Oxygen", "Carbon dioxide", "Argon"]},
+  {c:'sci',d:3,y:null,q:'Which part of the cell is often called its powerhouse?',a:'The mitochondrion',o:["The nucleus", "The ribosome", "The chloroplast"]},
+  {c:'sci',d:3,y:1953,q:'Which two scientists published the double-helix structure of DNA in 1953?',a:'James Watson and Francis Crick',o:["Marie and Pierre Curie", "Rosalind Franklin and Linus Pauling", "Gregor Mendel and Charles Darwin"]},
+  {c:'sci',d:3,y:null,q:'What is the largest animal ever known to have lived?',a:'The blue whale',o:["The African elephant", "Argentinosaurus", "The sperm whale"]},
+  {c:'sci',d:3,y:null,q:'What is the most abundant element in the universe?',a:'Hydrogen',o:["Helium", "Oxygen", "Carbon"]},
+  {c:'sci',d:3,y:null,q:'What is the SI unit of electrical resistance?',a:'The ohm',o:["The volt", "The ampere", "The watt"]},
+  {c:'sci',d:4,y:null,q:'Which metal is liquid at room temperature?',a:'Mercury',o:["Gallium", "Sodium", "Lead"]},
+  {c:'sci',d:4,y:null,q:'What is the name of the bone in the upper arm?',a:'The humerus',o:["The femur", "The radius", "The ulna"]},
+  {c:'sci',d:4,y:null,q:'How many bones are in the adult human body?',a:'206',o:["186", "212", "256"]},
+  {c:'sci',d:4,y:null,q:'What is the process called when a solid turns directly into a gas?',a:'Sublimation',o:["Evaporation", "Condensation", "Deposition"]},
+  {c:'sci',d:4,y:null,q:'What is the chemical symbol for tungsten?',a:'W',o:["Tu", "Tn", "Ts"]},
+  {c:'sci',d:5,y:1927,q:'Which physicist proposed the uncertainty principle in 1927?',a:'Werner Heisenberg',o:["Niels Bohr", "Erwin Schrödinger", "Max Planck"]},
+  {c:'sci',d:5,y:null,q:'What is the heaviest element found naturally in significant amounts on Earth?',a:'Uranium',o:["Plutonium", "Lead", "Radium"]},
+  {c:'sci',d:5,y:null,q:'What is the closest star system to our Sun?',a:'Alpha Centauri',o:["Sirius", "Betelgeuse", "Vega"]},
   // Sports & Leisure
-  {c:'spo',d:1,y:null,q:'How many players does a soccer team have on the field at once?',a:'11'},
-  {c:'spo',d:1,y:null,q:'In which sport would you perform a slam dunk?',a:'Basketball'},
-  {c:'spo',d:1,y:null,q:'How many holes are on a standard golf course?',a:'18'},
-  {c:'spo',d:2,y:1896,q:'In which city were the first modern Olympic Games held in 1896?',a:'Athens'},
-  {c:'spo',d:2,y:null,q:'How many points is a touchdown worth in American football?',n:['us'],a:'6'},
-  {c:'spo',d:2,y:2016,q:'Which Jamaican sprinter won the Olympic 100 m three times in a row (2008, 2012, 2016)?',a:'Usain Bolt'},
-  {c:'spo',d:2,y:null,q:'What is the national sport of Japan?',a:'Sumo wrestling'},
-  {c:'spo',d:3,y:1998,q:'Which player won six NBA championships with the Chicago Bulls in the 1990s?',a:'Michael Jordan'},
-  {c:'spo',d:3,y:null,q:'In tennis, what is a score of zero called?',a:'Love'},
-  {c:'spo',d:3,y:1966,q:'Which country won the 1966 FIFA World Cup?',a:'England'},
-  {c:'spo',d:3,y:null,q:'In chess, which piece moves only diagonally?',a:'The bishop'},
-  {c:'spo',d:3,y:2021,q:'Which quarterback won his seventh Super Bowl in February 2021?',n:['us'],a:'Tom Brady'},
-  {c:'spo',d:3,y:2008,q:'Which swimmer won eight gold medals at the 2008 Beijing Olympics?',a:'Michael Phelps'},
-  {c:'spo',d:4,y:1936,q:'Which American athlete won four gold medals at the 1936 Berlin Olympics?',a:'Jesse Owens'},
-  {c:'spo',d:4,y:null,q:'How long is an Olympic-size swimming pool?',a:'50 meters'},
-  {c:'spo',d:4,y:1954,q:'Who was the first person to run a mile in under four minutes, in 1954?',a:'Roger Bannister'},
-  {c:'spo',d:4,y:null,q:'In cricket, how many balls are bowled in a standard over?',n:['uk','ie','au','nz'],a:'6'},
-  {c:'spo',d:4,y:1973,q:'Which horse won the 1973 Triple Crown, taking the Belmont by 31 lengths?',n:['us'],a:'Secretariat'},
-  {c:'spo',d:5,y:1980,q:'Which team did the U.S. beat in the 1980 “Miracle on Ice” Olympic hockey game?',n:['us','ca'],a:'The Soviet Union'},
-  {c:'spo',d:5,y:1988,q:'Who won the 1988 Olympic 100 m in Seoul but was stripped of the gold for doping?',a:'Ben Johnson'},
-  {c:'spo',d:5,y:null,q:'Which country has won the most Davis Cup titles in tennis?',a:'The United States'},
+  {c:'spo',d:1,y:null,q:'How many players does a soccer team have on the field at once?',a:'11',o:["9", "10", "12"]},
+  {c:'spo',d:1,y:null,q:'In which sport would you perform a slam dunk?',a:'Basketball',o:["Volleyball", "Netball", "Handball"]},
+  {c:'spo',d:1,y:null,q:'How many holes are on a standard golf course?',a:'18',o:["9", "12", "24"]},
+  {c:'spo',d:2,y:1896,q:'In which city were the first modern Olympic Games held in 1896?',a:'Athens',o:["Paris", "London", "Rome"]},
+  {c:'spo',d:2,y:null,q:'How many points is a touchdown worth in American football?',n:['us'],a:'6',o:["3", "5", "7"]},
+  {c:'spo',d:2,y:2016,q:'Which Jamaican sprinter won the Olympic 100 m three times in a row (2008, 2012, 2016)?',a:'Usain Bolt',o:["Yohan Blake", "Asafa Powell", "Carl Lewis"]},
+  {c:'spo',d:2,y:null,q:'What is the national sport of Japan?',a:'Sumo wrestling',o:["Judo", "Baseball", "Karate"]},
+  {c:'spo',d:3,y:1998,q:'Which player won six NBA championships with the Chicago Bulls in the 1990s?',a:'Michael Jordan',o:["Magic Johnson", "Larry Bird", "Kobe Bryant"]},
+  {c:'spo',d:3,y:null,q:'In tennis, what is a score of zero called?',a:'Love',o:["Nil", "Deuce", "Let"]},
+  {c:'spo',d:3,y:1966,q:'Which country won the 1966 FIFA World Cup?',a:'England',o:["West Germany", "Brazil", "Italy"]},
+  {c:'spo',d:3,y:null,q:'In chess, which piece moves only diagonally?',a:'The bishop',o:["The rook", "The knight", "The queen"]},
+  {c:'spo',d:3,y:2021,q:'Which quarterback won his seventh Super Bowl in February 2021?',n:['us'],a:'Tom Brady',o:["Peyton Manning", "Patrick Mahomes", "Aaron Rodgers"]},
+  {c:'spo',d:3,y:2008,q:'Which swimmer won eight gold medals at the 2008 Beijing Olympics?',a:'Michael Phelps',o:["Mark Spitz", "Ryan Lochte", "Ian Thorpe"]},
+  {c:'spo',d:4,y:1936,q:'Which American athlete won four gold medals at the 1936 Berlin Olympics?',a:'Jesse Owens',o:["Jim Thorpe", "Carl Lewis", "Ralph Metcalfe"]},
+  {c:'spo',d:4,y:null,q:'How long is an Olympic-size swimming pool?',a:'50 meters',o:["25 meters", "100 meters", "75 meters"]},
+  {c:'spo',d:4,y:1954,q:'Who was the first person to run a mile in under four minutes, in 1954?',a:'Roger Bannister',o:["Sebastian Coe", "John Landy", "Emil Zátopek"]},
+  {c:'spo',d:4,y:null,q:'In cricket, how many balls are bowled in a standard over?',n:['uk','ie','au','nz'],a:'6',o:["4", "5", "8"]},
+  {c:'spo',d:4,y:1973,q:'Which horse won the 1973 Triple Crown, taking the Belmont by 31 lengths?',n:['us'],a:'Secretariat',o:["Seabiscuit", "Affirmed", "Seattle Slew"]},
+  {c:'spo',d:5,y:1980,q:'Which team did the U.S. beat in the 1980 “Miracle on Ice” Olympic hockey game?',n:['us','ca'],a:'The Soviet Union',o:["Canada", "Sweden", "Czechoslovakia"]},
+  {c:'spo',d:5,y:1988,q:'Who won the 1988 Olympic 100 m in Seoul but was stripped of the gold for doping?',a:'Ben Johnson',o:["Carl Lewis", "Linford Christie", "Marion Jones"]},
+  {c:'spo',d:5,y:null,q:'Which country has won the most Davis Cup titles in tennis?',a:'The United States',o:["Australia", "France", "Spain"]},
   // Additional questions
-  {c:"geo",d:1,y:null,q:"What is the largest country in the world by area?",a:"Russia"},
-  {c:"geo",d:1,y:null,q:"Which U.S. state is the Grand Canyon in?",n:['us'],a:"Arizona"},
-  {c:"geo",d:1,y:null,q:"What is the capital of Italy?",a:"Rome"},
-  {c:"geo",d:1,y:null,q:"Which country is shaped like a boot?",a:"Italy"},
-  {c:"geo",d:1,y:null,q:"What is the capital of Japan?",a:"Tokyo"},
-  {c:"geo",d:2,y:null,q:"Which desert covers much of Mongolia and northern China?",a:"The Gobi"},
-  {c:"geo",d:2,y:null,q:"What is the capital of Spain?",a:"Madrid"},
-  {c:"geo",d:2,y:null,q:"Which U.S. state has the most people?",n:['us'],a:"California"},
-  {c:"geo",d:2,y:null,q:"In which country would you find Machu Picchu?",a:"Peru"},
-  {c:"geo",d:3,y:null,q:"What is the capital of Turkey?",a:"Ankara"},
-  {c:"geo",d:3,y:null,q:"Which African country has the largest population?",a:"Nigeria"},
-  {c:"geo",d:3,y:null,q:"Which South American country has Portuguese as its official language?",a:"Brazil"},
-  {c:"geo",d:3,y:null,q:"The Danube empties into which sea?",a:"The Black Sea"},
-  {c:"geo",d:4,y:null,q:"What is the capital of New Zealand?",a:"Wellington"},
-  {c:"geo",d:4,y:null,q:"Which country has the most time zones, counting overseas territories?",a:"France"},
-  {c:"geo",d:4,y:null,q:"Which strait separates Asia from North America?",a:"The Bering Strait"},
-  {c:"geo",d:4,y:null,q:"What is the only U.S. state capital with three words in its name?",n:['us'],a:"Salt Lake City"},
-  {c:"geo",d:5,y:null,q:"What is the capital of Kyrgyzstan?",a:"Bishkek"},
-  {c:"geo",d:5,y:null,q:"Which African country is the only one bordered by both the Mediterranean and the Red Sea?",a:"Egypt"},
-  {c:"geo",d:5,y:null,q:"Which country is entirely surrounded by South Africa?",a:"Lesotho"},
-  {c:"geo",d:5,y:null,q:"What is the largest city in Canada by population?",a:"Toronto"},
-  {c:"ent",d:1,y:1939,q:"In The Wizard of Oz, what is the name of Dorothy’s dog?",a:"Toto"},
-  {c:"ent",d:1,y:1995,q:"Which Pixar film introduced Woody and Buzz Lightyear?",a:"Toy Story"},
-  {c:"ent",d:1,y:2003,q:"Who plays Captain Jack Sparrow in Pirates of the Caribbean?",a:"Johnny Depp"},
-  {c:"ent",d:1,y:1990,q:"In Home Alone, which city does the McCallister family fly to for Christmas?",a:"Paris"},
-  {c:"ent",d:2,y:2007,q:"Which TV series featured a chemistry teacher named Walter White?",a:"Breaking Bad"},
-  {c:"ent",d:2,y:1993,q:"Which Steven Spielberg film brought dinosaurs back on an island theme park?",a:"Jurassic Park"},
-  {c:"ent",d:2,y:1985,q:"In Back to the Future, what car is the time machine?",a:"A DeLorean"},
-  {c:"ent",d:2,y:2016,q:"Who sang “Shape of You”?",a:"Ed Sheeran"},
-  {c:"ent",d:3,y:1994,q:"Who directed Pulp Fiction?",a:"Quentin Tarantino"},
-  {c:"ent",d:3,y:1977,q:"Which band released the album Rumours?",a:"Fleetwood Mac"},
-  {c:"ent",d:3,y:2005,q:"Which sitcom was set at the Dunder Mifflin paper company?",n:['us','ca'],a:"The Office"},
-  {c:"ent",d:3,y:1965,q:"Which Julie Andrews film features the von Trapp family?",a:"The Sound of Music"},
-  {c:"ent",d:4,y:1959,q:"Who directed North by Northwest?",a:"Alfred Hitchcock"},
-  {c:"ent",d:4,y:2000,q:"Which band released the album Kid A?",a:"Radiohead"},
-  {c:"ent",d:4,y:1979,q:"Which film’s tagline was “In space no one can hear you scream”?",a:"Alien"},
-  {c:"ent",d:4,y:1973,q:"Which Pink Floyd album has a prism on the cover?",a:"The Dark Side of the Moon"},
-  {c:"ent",d:5,y:1954,q:"Who directed Seven Samurai?",a:"Akira Kurosawa"},
-  {c:"ent",d:5,y:1927,q:"Which 1927 Fritz Lang film is set in a futuristic city?",a:"Metropolis"},
-  {c:"ent",d:5,y:1971,q:"Who composed the score for Shaft?",a:"Isaac Hayes"},
-  {c:"ent",d:5,y:1944,q:"Which film noir has an insurance salesman plotting murder with Barbara Stanwyck?",a:"Double Indemnity"},
-  {c:"his",d:1,y:1492,q:"In what year did Columbus first sail to the Americas?",a:"1492"},
-  {c:"his",d:1,y:1963,q:"Who gave the “I Have a Dream” speech?",a:"Martin Luther King Jr."},
-  {c:"his",d:1,y:null,q:"Who was the first President of the United States?",n:['us'],a:"George Washington"},
-  {c:"his",d:1,y:1986,q:"Which space shuttle broke apart shortly after launch in 1986?",a:"Challenger"},
-  {c:"his",d:2,y:1941,q:"Which attack brought the United States into World War II?",a:"Pearl Harbor"},
-  {c:"his",d:2,y:1969,q:"What was the name of the first Moon-landing mission?",a:"Apollo 11"},
-  {c:"his",d:2,y:1955,q:"Who refused to give up her bus seat in Montgomery in 1955?",n:['us'],a:"Rosa Parks"},
-  {c:"his",d:2,y:1789,q:"The storming of which prison began the French Revolution?",a:"The Bastille"},
-  {c:"his",d:3,y:1991,q:"Which Iraqi dictator was driven out of Kuwait in 1991?",a:"Saddam Hussein"},
-  {c:"his",d:3,y:1947,q:"Which two countries were created by the 1947 partition of British India?",a:"India and Pakistan"},
-  {c:"his",d:3,y:1920,q:"Which U.S. constitutional amendment gave women the vote?",n:['us'],a:"The 19th"},
-  {c:"his",d:3,y:1588,q:"Which navy was defeated trying to invade England in 1588?",a:"The Spanish Armada"},
-  {c:"his",d:4,y:1521,q:"Which Spanish conquistador toppled the Aztec Empire?",a:"Hernán Cortés"},
-  {c:"his",d:4,y:1832,q:"Which 1832 act expanded the vote in Britain?",n:['uk','ie'],a:"The Great Reform Act"},
-  {c:"his",d:4,y:1979,q:"Who became the first female Prime Minister of the United Kingdom?",a:"Margaret Thatcher"},
-  {c:"his",d:4,y:1911,q:"Who was the first person to reach the South Pole?",a:"Roald Amundsen"},
-  {c:"his",d:5,y:1571,q:"Which 1571 naval battle ended Ottoman expansion in the Mediterranean?",a:"Lepanto"},
-  {c:"his",d:5,y:1884,q:"Which 1884–85 conference carved up Africa among European powers?",a:"The Berlin Conference"},
-  {c:"his",d:5,y:1687,q:"Who published Principia Mathematica in 1687?",a:"Isaac Newton"},
-  {c:"his",d:5,y:1204,q:"Which city did the Fourth Crusade sack in 1204?",a:"Constantinople"},
-  {c:"art",d:1,y:null,q:"Who painted the ceiling of the Sistine Chapel?",a:"Michelangelo"},
-  {c:"art",d:1,y:1865,q:"Who wrote Alice’s Adventures in Wonderland?",a:"Lewis Carroll"},
-  {c:"art",d:1,y:1937,q:"Who wrote The Hobbit?",a:"J.R.R. Tolkien"},
-  {c:"art",d:1,y:null,q:"Which Shakespeare play features the line “To be, or not to be”?",a:"Hamlet"},
-  {c:"art",d:2,y:1951,q:"Who wrote The Catcher in the Rye?",a:"J.D. Salinger"},
-  {c:"art",d:2,y:null,q:"Who painted The Scream?",a:"Edvard Munch"},
-  {c:"art",d:2,y:1996,q:"Who wrote A Game of Thrones?",a:"George R.R. Martin"},
-  {c:"art",d:2,y:null,q:"Who sculpted The Thinker?",a:"Auguste Rodin"},
-  {c:"art",d:3,y:1932,q:"Who wrote Brave New World?",a:"Aldous Huxley"},
-  {c:"art",d:3,y:null,q:"Which artist is known for soup-can paintings?",a:"Andy Warhol"},
-  {c:"art",d:3,y:1851,q:"Which novel opens with “Call me Ishmael”?",a:"Moby-Dick"},
-  {c:"art",d:3,y:1987,q:"Who wrote Beloved?",a:"Toni Morrison"},
-  {c:"art",d:4,y:1899,q:"Who wrote Heart of Darkness?",a:"Joseph Conrad"},
-  {c:"art",d:4,y:null,q:"Which painter is known for water lilies at Giverny?",a:"Claude Monet"},
-  {c:"art",d:4,y:1915,q:"Who wrote The Metamorphosis?",a:"Franz Kafka"},
-  {c:"art",d:4,y:1884,q:"Which Georges Seurat painting shows a Sunday afternoon on an island?",a:"A Sunday on La Grande Jatte"},
-  {c:"art",d:5,y:1861,q:"Who wrote the novel Silas Marner?",a:"George Eliot"},
-  {c:"art",d:5,y:1434,q:"Who painted The Arnolfini Portrait?",a:"Jan van Eyck"},
-  {c:"art",d:5,y:1759,q:"Who wrote Candide?",a:"Voltaire"},
-  {c:"art",d:5,y:1513,q:"Who wrote The Prince?",a:"Niccolò Machiavelli"},
-  {c:"sci",d:1,y:null,q:"What is the closest planet to the Sun?",a:"Mercury"},
-  {c:"sci",d:1,y:null,q:"What gas do humans need to breathe to survive?",a:"Oxygen"},
-  {c:"sci",d:1,y:null,q:"How many planets are in our solar system?",a:"Eight"},
-  {c:"sci",d:1,y:null,q:"What is the fastest land animal?",a:"The cheetah"},
-  {c:"sci",d:2,y:null,q:"What is the largest planet in our solar system?",a:"Jupiter"},
-  {c:"sci",d:2,y:null,q:"What is the boiling point of water in Celsius at sea level?",a:"100°C"},
-  {c:"sci",d:2,y:null,q:"How many chambers does the human heart have?",a:"Four"},
-  {c:"sci",d:2,y:null,q:"What force keeps planets in orbit around the Sun?",a:"Gravity"},
-  {c:"sci",d:3,y:null,q:"What is the chemical symbol for sodium?",a:"Na"},
-  {c:"sci",d:3,y:null,q:"Which blood type is the universal donor?",a:"O negative"},
-  {c:"sci",d:3,y:null,q:"What is the study of fungi called?",a:"Mycology"},
-  {c:"sci",d:3,y:null,q:"Which planet has the most moons?",a:"Saturn"},
-  {c:"sci",d:4,y:null,q:"What is the smallest bone in the human body?",a:"The stapes"},
-  {c:"sci",d:4,y:null,q:"What particle carries the electromagnetic force?",a:"The photon"},
-  {c:"sci",d:4,y:null,q:"Which element has atomic number 1?",a:"Hydrogen"},
-  {c:"sci",d:4,y:1859,q:"Who wrote On the Origin of Species?",a:"Charles Darwin"},
-  {c:"sci",d:5,y:null,q:"What is the half-life of carbon-14, to the nearest thousand years?",a:"About 5,700 years"},
-  {c:"sci",d:5,y:null,q:"What is the name of the layer of the atmosphere where most weather occurs?",a:"The troposphere"},
-  {c:"sci",d:5,y:1905,q:"In what year did Einstein publish his special theory of relativity?",a:"1905"},
-  {c:"sci",d:5,y:null,q:"What is the most abundant protein in the human body?",a:"Collagen"},
-  {c:"spo",d:1,y:null,q:"How many players are on a basketball team on the court at once?",a:"Five"},
-  {c:"spo",d:1,y:null,q:"In which sport is the Stanley Cup awarded?",n:['us','ca'],a:"Ice hockey"},
-  {c:"spo",d:1,y:null,q:"What sport is played at Wimbledon?",a:"Tennis"},
-  {c:"spo",d:1,y:null,q:"How many rings are on the Olympic flag?",a:"Five"},
-  {c:"spo",d:2,y:null,q:"How many innings are in a standard baseball game?",n:['us','ca'],a:"Nine"},
-  {c:"spo",d:2,y:null,q:"Which country hosts the Tour de France?",a:"France"},
-  {c:"spo",d:2,y:2010,q:"Which country won the 2010 FIFA World Cup?",a:"Spain"},
-  {c:"spo",d:2,y:null,q:"In golf, what is one stroke under par on a hole called?",a:"A birdie"},
-  {c:"spo",d:3,y:1992,q:"Which Olympics featured the original U.S. basketball “Dream Team”?",n:['us'],a:"Barcelona 1992"},
-  {c:"spo",d:3,y:null,q:"How many points is a touchdown plus the extra-point kick worth?",n:['us'],a:"Seven"},
-  {c:"spo",d:3,y:2015,q:"Which race is the final leg of the American Triple Crown?",n:['us'],a:"The Belmont Stakes"},
-  {c:"spo",d:3,y:1997,q:"Who became the youngest Masters champion in 1997?",a:"Tiger Woods"},
-  {c:"spo",d:4,y:1974,q:"In which African city did Ali beat Foreman in the “Rumble in the Jungle”?",a:"Kinshasa"},
-  {c:"spo",d:4,y:null,q:"How long is a marathon, in miles?",a:"26.2 miles"},
-  {c:"spo",d:4,y:1941,q:"Which Yankee had a 56-game hitting streak in 1941?",n:['us'],a:"Joe DiMaggio"},
-  {c:"spo",d:4,y:null,q:"In which sport would you use a shuttlecock?",a:"Badminton"},
-  {c:"spo",d:5,y:1908,q:"Which MLB team went from 1908 to 2016 without a World Series title?",n:['us','ca'],a:"The Chicago Cubs"},
-  {c:"spo",d:5,y:1972,q:"Which NFL team completed the only perfect season, in 1972?",n:['us'],a:"The Miami Dolphins"},
-  {c:"spo",d:5,y:null,q:"In curling, what is the target area called?",a:"The house"},
-  {c:"spo",d:5,y:1960,q:"Which Ethiopian won the 1960 Olympic marathon running barefoot?",a:"Abebe Bikila"},
+  {c:"geo",d:1,y:null,q:"What is the largest country in the world by area?",a:"Russia",o:["Canada", "China", "The United States"]},
+  {c:"geo",d:1,y:null,q:"Which U.S. state is the Grand Canyon in?",n:['us'],a:"Arizona",o:["Nevada", "Utah", "Colorado"]},
+  {c:"geo",d:1,y:null,q:"What is the capital of Italy?",a:"Rome",o:["Milan", "Florence", "Naples"]},
+  {c:"geo",d:1,y:null,q:"Which country is shaped like a boot?",a:"Italy",o:["Greece", "Portugal", "Chile"]},
+  {c:"geo",d:1,y:null,q:"What is the capital of Japan?",a:"Tokyo",o:["Kyoto", "Osaka", "Seoul"]},
+  {c:"geo",d:2,y:null,q:"Which desert covers much of Mongolia and northern China?",a:"The Gobi",o:["The Taklamakan", "The Kalahari", "The Thar"]},
+  {c:"geo",d:2,y:null,q:"What is the capital of Spain?",a:"Madrid",o:["Barcelona", "Seville", "Valencia"]},
+  {c:"geo",d:2,y:null,q:"Which U.S. state has the most people?",n:['us'],a:"California",o:["Texas", "New York", "Florida"]},
+  {c:"geo",d:2,y:null,q:"In which country would you find Machu Picchu?",a:"Peru",o:["Bolivia", "Chile", "Mexico"]},
+  {c:"geo",d:3,y:null,q:"What is the capital of Turkey?",a:"Ankara",o:["Istanbul", "Izmir", "Bursa"]},
+  {c:"geo",d:3,y:null,q:"Which African country has the largest population?",a:"Nigeria",o:["Ethiopia", "Egypt", "South Africa"]},
+  {c:"geo",d:3,y:null,q:"Which South American country has Portuguese as its official language?",a:"Brazil",o:["Argentina", "Colombia", "Venezuela"]},
+  {c:"geo",d:3,y:null,q:"The Danube empties into which sea?",a:"The Black Sea",o:["The Mediterranean Sea", "The Adriatic Sea", "The Caspian Sea"]},
+  {c:"geo",d:4,y:null,q:"What is the capital of New Zealand?",a:"Wellington",o:["Auckland", "Christchurch", "Queenstown"]},
+  {c:"geo",d:4,y:null,q:"Which country has the most time zones, counting overseas territories?",a:"France",o:["Russia", "The United States", "The United Kingdom"]},
+  {c:"geo",d:4,y:null,q:"Which strait separates Asia from North America?",a:"The Bering Strait",o:["The Strait of Magellan", "The Bosphorus", "The Strait of Malacca"]},
+  {c:"geo",d:4,y:null,q:"What is the only U.S. state capital with three words in its name?",n:['us'],a:"Salt Lake City",o:["Oklahoma City", "Santa Fe", "Baton Rouge"]},
+  {c:"geo",d:5,y:null,q:"What is the capital of Kyrgyzstan?",a:"Bishkek",o:["Dushanbe", "Ashgabat", "Tashkent"]},
+  {c:"geo",d:5,y:null,q:"Which African country is the only one bordered by both the Mediterranean and the Red Sea?",a:"Egypt",o:["Libya", "Sudan", "Eritrea"]},
+  {c:"geo",d:5,y:null,q:"Which country is entirely surrounded by South Africa?",a:"Lesotho",o:["Eswatini", "Botswana", "Namibia"]},
+  {c:"geo",d:5,y:null,q:"What is the largest city in Canada by population?",a:"Toronto",o:["Montreal", "Vancouver", "Ottawa"]},
+  {c:"ent",d:1,y:1939,q:"In The Wizard of Oz, what is the name of Dorothy’s dog?",a:"Toto",o:["Rex", "Buddy", "Sandy"]},
+  {c:"ent",d:1,y:1995,q:"Which Pixar film introduced Woody and Buzz Lightyear?",a:"Toy Story",o:["A Bug’s Life", "Monsters, Inc.", "Cars"]},
+  {c:"ent",d:1,y:2003,q:"Who plays Captain Jack Sparrow in Pirates of the Caribbean?",a:"Johnny Depp",o:["Orlando Bloom", "Geoffrey Rush", "Russell Crowe"]},
+  {c:"ent",d:1,y:1990,q:"In Home Alone, which city does the McCallister family fly to for Christmas?",a:"Paris",o:["London", "Rome", "New York"]},
+  {c:"ent",d:2,y:2007,q:"Which TV series featured a chemistry teacher named Walter White?",a:"Breaking Bad",o:["Better Call Saul", "Ozark", "Weeds"]},
+  {c:"ent",d:2,y:1993,q:"Which Steven Spielberg film brought dinosaurs back on an island theme park?",a:"Jurassic Park",o:["The Lost World", "King Kong", "Westworld"]},
+  {c:"ent",d:2,y:1985,q:"In Back to the Future, what car is the time machine?",a:"A DeLorean",o:["A Corvette", "A Mustang", "A Camaro"]},
+  {c:"ent",d:2,y:2016,q:"Who sang “Shape of You”?",a:"Ed Sheeran",o:["Sam Smith", "Justin Bieber", "Shawn Mendes"]},
+  {c:"ent",d:3,y:1994,q:"Who directed Pulp Fiction?",a:"Quentin Tarantino",o:["Guy Ritchie", "Robert Rodriguez", "Martin Scorsese"]},
+  {c:"ent",d:3,y:1977,q:"Which band released the album Rumours?",a:"Fleetwood Mac",o:["The Eagles", "Eagles", "Steely Dan"]},
+  {c:"ent",d:3,y:2005,q:"Which sitcom was set at the Dunder Mifflin paper company?",n:['us','ca'],a:"The Office",o:["Parks and Recreation", "30 Rock", "Workaholics"]},
+  {c:"ent",d:3,y:1965,q:"Which Julie Andrews film features the von Trapp family?",a:"The Sound of Music",o:["Mary Poppins", "My Fair Lady", "Chitty Chitty Bang Bang"]},
+  {c:"ent",d:4,y:1959,q:"Who directed North by Northwest?",a:"Alfred Hitchcock",o:["Billy Wilder", "Orson Welles", "John Ford"]},
+  {c:"ent",d:4,y:2000,q:"Which band released the album Kid A?",a:"Radiohead",o:["Coldplay", "Blur", "Oasis"]},
+  {c:"ent",d:4,y:1979,q:"Which film’s tagline was “In space no one can hear you scream”?",a:"Alien",o:["Predator", "Event Horizon", "The Thing"]},
+  {c:"ent",d:4,y:1973,q:"Which Pink Floyd album has a prism on the cover?",a:"The Dark Side of the Moon",o:["The Wall", "Wish You Were Here", "Animals"]},
+  {c:"ent",d:5,y:1954,q:"Who directed Seven Samurai?",a:"Akira Kurosawa",o:["Yasujirō Ozu", "Hayao Miyazaki", "Takeshi Kitano"]},
+  {c:"ent",d:5,y:1927,q:"Which 1927 Fritz Lang film is set in a futuristic city?",a:"Metropolis",o:["Nosferatu", "M", "The Cabinet of Dr. Caligari"]},
+  {c:"ent",d:5,y:1971,q:"Who composed the score for Shaft?",a:"Isaac Hayes",o:["Curtis Mayfield", "Quincy Jones", "Marvin Gaye"]},
+  {c:"ent",d:5,y:1944,q:"Which film noir has an insurance salesman plotting murder with Barbara Stanwyck?",a:"Double Indemnity",o:["The Maltese Falcon", "The Big Sleep", "Laura"]},
+  {c:"his",d:1,y:1492,q:"In what year did Columbus first sail to the Americas?",a:"1492",o:["1482", "1502", "1512"]},
+  {c:"his",d:1,y:1963,q:"Who gave the “I Have a Dream” speech?",a:"Martin Luther King Jr.",o:["Malcolm X", "John Lewis", "Jesse Jackson"]},
+  {c:"his",d:1,y:null,q:"Who was the first President of the United States?",n:['us'],a:"George Washington",o:["Thomas Jefferson", "John Adams", "Benjamin Franklin"]},
+  {c:"his",d:1,y:1986,q:"Which space shuttle broke apart shortly after launch in 1986?",a:"Challenger",o:["Columbia", "Discovery", "Atlantis"]},
+  {c:"his",d:2,y:1941,q:"Which attack brought the United States into World War II?",a:"Pearl Harbor",o:["The sinking of the Lusitania", "The invasion of Poland", "The Battle of Midway"]},
+  {c:"his",d:2,y:1969,q:"What was the name of the first Moon-landing mission?",a:"Apollo 11",o:["Apollo 13", "Gemini 7", "Mercury 3"]},
+  {c:"his",d:2,y:1955,q:"Who refused to give up her bus seat in Montgomery in 1955?",n:['us'],a:"Rosa Parks",o:["Harriet Tubman", "Coretta Scott King", "Ruby Bridges"]},
+  {c:"his",d:2,y:1789,q:"The storming of which prison began the French Revolution?",a:"The Bastille",o:["The Conciergerie", "The Tower of Paris", "Château d’If"]},
+  {c:"his",d:3,y:1991,q:"Which Iraqi dictator was driven out of Kuwait in 1991?",a:"Saddam Hussein",o:["Muammar Gaddafi", "Hafez al-Assad", "Ayatollah Khomeini"]},
+  {c:"his",d:3,y:1947,q:"Which two countries were created by the 1947 partition of British India?",a:"India and Pakistan",o:["India and Bangladesh", "India and Sri Lanka", "Pakistan and Afghanistan"]},
+  {c:"his",d:3,y:1920,q:"Which U.S. constitutional amendment gave women the vote?",n:['us'],a:"The 19th",o:["The 15th", "The 21st", "The 14th"]},
+  {c:"his",d:3,y:1588,q:"Which navy was defeated trying to invade England in 1588?",a:"The Spanish Armada",o:["The French Navy", "The Dutch Fleet", "The Viking Fleet"]},
+  {c:"his",d:4,y:1521,q:"Which Spanish conquistador toppled the Aztec Empire?",a:"Hernán Cortés",o:["Francisco Pizarro", "Vasco Núñez de Balboa", "Ponce de León"]},
+  {c:"his",d:4,y:1832,q:"Which 1832 act expanded the vote in Britain?",n:['uk','ie'],a:"The Great Reform Act",o:["The Representation Act", "The Suffrage Act", "The Chartist Act"]},
+  {c:"his",d:4,y:1979,q:"Who became the first female Prime Minister of the United Kingdom?",a:"Margaret Thatcher",o:["Theresa May", "Indira Gandhi", "Golda Meir"]},
+  {c:"his",d:4,y:1911,q:"Who was the first person to reach the South Pole?",a:"Roald Amundsen",o:["Robert Falcon Scott", "Ernest Shackleton", "Edmund Hillary"]},
+  {c:"his",d:5,y:1571,q:"Which 1571 naval battle ended Ottoman expansion in the Mediterranean?",a:"Lepanto",o:["Trafalgar", "Actium", "Salamis"]},
+  {c:"his",d:5,y:1884,q:"Which 1884–85 conference carved up Africa among European powers?",a:"The Berlin Conference",o:["The Congress of Vienna", "The Paris Conference", "The Hague Convention"]},
+  {c:"his",d:5,y:1687,q:"Who published Principia Mathematica in 1687?",a:"Isaac Newton",o:["Galileo Galilei", "Johannes Kepler", "Gottfried Leibniz"]},
+  {c:"his",d:5,y:1204,q:"Which city did the Fourth Crusade sack in 1204?",a:"Constantinople",o:["Jerusalem", "Antioch", "Alexandria"]},
+  {c:"art",d:1,y:null,q:"Who painted the ceiling of the Sistine Chapel?",a:"Michelangelo",o:["Raphael", "Leonardo da Vinci", "Caravaggio"]},
+  {c:"art",d:1,y:1865,q:"Who wrote Alice’s Adventures in Wonderland?",a:"Lewis Carroll",o:["J.M. Barrie", "Edward Lear", "A.A. Milne"]},
+  {c:"art",d:1,y:1937,q:"Who wrote The Hobbit?",a:"J.R.R. Tolkien",o:["C.S. Lewis", "Philip Pullman", "Ursula K. Le Guin"]},
+  {c:"art",d:1,y:null,q:"Which Shakespeare play features the line “To be, or not to be”?",a:"Hamlet",o:["Macbeth", "King Lear", "Othello"]},
+  {c:"art",d:2,y:1951,q:"Who wrote The Catcher in the Rye?",a:"J.D. Salinger",o:["Jack Kerouac", "Kurt Vonnegut", "John Updike"]},
+  {c:"art",d:2,y:null,q:"Who painted The Scream?",a:"Edvard Munch",o:["Gustav Klimt", "Egon Schiele", "Francis Bacon"]},
+  {c:"art",d:2,y:1996,q:"Who wrote A Game of Thrones?",a:"George R.R. Martin",o:["J.R.R. Tolkien", "Robert Jordan", "Brandon Sanderson"]},
+  {c:"art",d:2,y:null,q:"Who sculpted The Thinker?",a:"Auguste Rodin",o:["Michelangelo", "Donatello", "Henry Moore"]},
+  {c:"art",d:3,y:1932,q:"Who wrote Brave New World?",a:"Aldous Huxley",o:["George Orwell", "Ray Bradbury", "Kurt Vonnegut"]},
+  {c:"art",d:3,y:null,q:"Which artist is known for soup-can paintings?",a:"Andy Warhol",o:["Roy Lichtenstein", "Jackson Pollock", "Keith Haring"]},
+  {c:"art",d:3,y:1851,q:"Which novel opens with “Call me Ishmael”?",a:"Moby-Dick",o:["Treasure Island", "The Old Man and the Sea", "Robinson Crusoe"]},
+  {c:"art",d:3,y:1987,q:"Who wrote Beloved?",a:"Toni Morrison",o:["Alice Walker", "Maya Angelou", "Zora Neale Hurston"]},
+  {c:"art",d:4,y:1899,q:"Who wrote Heart of Darkness?",a:"Joseph Conrad",o:["Rudyard Kipling", "Graham Greene", "E.M. Forster"]},
+  {c:"art",d:4,y:null,q:"Which painter is known for water lilies at Giverny?",a:"Claude Monet",o:["Édouard Manet", "Pierre-Auguste Renoir", "Edgar Degas"]},
+  {c:"art",d:4,y:1915,q:"Who wrote The Metamorphosis?",a:"Franz Kafka",o:["Albert Camus", "Hermann Hesse", "Thomas Mann"]},
+  {c:"art",d:4,y:1884,q:"Which Georges Seurat painting shows a Sunday afternoon on an island?",a:"A Sunday on La Grande Jatte",o:["Bathers at Asnières", "Luncheon of the Boating Party", "The Circus"]},
+  {c:"art",d:5,y:1861,q:"Who wrote the novel Silas Marner?",a:"George Eliot",o:["Thomas Hardy", "Charlotte Brontë", "Elizabeth Gaskell"]},
+  {c:"art",d:5,y:1434,q:"Who painted The Arnolfini Portrait?",a:"Jan van Eyck",o:["Hieronymus Bosch", "Albrecht Dürer", "Hans Holbein"]},
+  {c:"art",d:5,y:1759,q:"Who wrote Candide?",a:"Voltaire",o:["Rousseau", "Molière", "Diderot"]},
+  {c:"art",d:5,y:1513,q:"Who wrote The Prince?",a:"Niccolò Machiavelli",o:["Thomas Hobbes", "Dante Alighieri", "Sun Tzu"]},
+  {c:"sci",d:1,y:null,q:"What is the closest planet to the Sun?",a:"Mercury",o:["Venus", "Mars", "Earth"]},
+  {c:"sci",d:1,y:null,q:"What gas do humans need to breathe to survive?",a:"Oxygen",o:["Nitrogen", "Hydrogen", "Carbon dioxide"]},
+  {c:"sci",d:1,y:null,q:"How many planets are in our solar system?",a:"Eight",o:["Seven", "Nine", "Ten"]},
+  {c:"sci",d:1,y:null,q:"What is the fastest land animal?",a:"The cheetah",o:["The pronghorn", "The greyhound", "The lion"]},
+  {c:"sci",d:2,y:null,q:"What is the largest planet in our solar system?",a:"Jupiter",o:["Saturn", "Neptune", "Uranus"]},
+  {c:"sci",d:2,y:null,q:"What is the boiling point of water in Celsius at sea level?",a:"100°C",o:["90°C", "110°C", "212°C"]},
+  {c:"sci",d:2,y:null,q:"How many chambers does the human heart have?",a:"Four",o:["Two", "Three", "Six"]},
+  {c:"sci",d:2,y:null,q:"What force keeps planets in orbit around the Sun?",a:"Gravity",o:["Magnetism", "Friction", "Inertia"]},
+  {c:"sci",d:3,y:null,q:"What is the chemical symbol for sodium?",a:"Na",o:["So", "Sd", "S"]},
+  {c:"sci",d:3,y:null,q:"Which blood type is the universal donor?",a:"O negative",o:["AB positive", "O positive", "A negative"]},
+  {c:"sci",d:3,y:null,q:"What is the study of fungi called?",a:"Mycology",o:["Botany", "Entomology", "Virology"]},
+  {c:"sci",d:3,y:null,q:"Which planet has the most moons?",a:"Saturn",o:["Jupiter", "Uranus", "Neptune"]},
+  {c:"sci",d:4,y:null,q:"What is the smallest bone in the human body?",a:"The stapes",o:["The hyoid", "The lunate", "The coccyx"]},
+  {c:"sci",d:4,y:null,q:"What particle carries the electromagnetic force?",a:"The photon",o:["The electron", "The gluon", "The neutrino"]},
+  {c:"sci",d:4,y:null,q:"Which element has atomic number 1?",a:"Hydrogen",o:["Helium", "Lithium", "Carbon"]},
+  {c:"sci",d:4,y:1859,q:"Who wrote On the Origin of Species?",a:"Charles Darwin",o:["Alfred Russel Wallace", "Gregor Mendel", "Thomas Huxley"]},
+  {c:"sci",d:5,y:null,q:"What is the half-life of carbon-14, to the nearest thousand years?",a:"About 5,700 years",o:["About 1,000 years", "About 12,000 years", "About 50,000 years"]},
+  {c:"sci",d:5,y:null,q:"What is the name of the layer of the atmosphere where most weather occurs?",a:"The troposphere",o:["The stratosphere", "The mesosphere", "The thermosphere"]},
+  {c:"sci",d:5,y:1905,q:"In what year did Einstein publish his special theory of relativity?",a:"1905",o:["1899", "1915", "1921"]},
+  {c:"sci",d:5,y:null,q:"What is the most abundant protein in the human body?",a:"Collagen",o:["Keratin", "Hemoglobin", "Albumin"]},
+  {c:"spo",d:1,y:null,q:"How many players are on a basketball team on the court at once?",a:"Five",o:["Six", "Seven", "Four"]},
+  {c:"spo",d:1,y:null,q:"In which sport is the Stanley Cup awarded?",n:['us','ca'],a:"Ice hockey",o:["Lacrosse", "Curling", "Rugby"]},
+  {c:"spo",d:1,y:null,q:"What sport is played at Wimbledon?",a:"Tennis",o:["Cricket", "Golf", "Croquet"]},
+  {c:"spo",d:1,y:null,q:"How many rings are on the Olympic flag?",a:"Five",o:["Four", "Six", "Seven"]},
+  {c:"spo",d:2,y:null,q:"How many innings are in a standard baseball game?",n:['us','ca'],a:"Nine",o:["Seven", "Eight", "Ten"]},
+  {c:"spo",d:2,y:null,q:"Which country hosts the Tour de France?",a:"France",o:["Belgium", "Italy", "Spain"]},
+  {c:"spo",d:2,y:2010,q:"Which country won the 2010 FIFA World Cup?",a:"Spain",o:["Germany", "The Netherlands", "Brazil"]},
+  {c:"spo",d:2,y:null,q:"In golf, what is one stroke under par on a hole called?",a:"A birdie",o:["An eagle", "A bogey", "An albatross"]},
+  {c:"spo",d:3,y:1992,q:"Which Olympics featured the original U.S. basketball “Dream Team”?",n:['us'],a:"Barcelona 1992",o:["Seoul 1988", "Atlanta 1996", "Los Angeles 1984"]},
+  {c:"spo",d:3,y:null,q:"How many points is a touchdown plus the extra-point kick worth?",n:['us'],a:"Seven",o:["Six", "Eight", "Nine"]},
+  {c:"spo",d:3,y:2015,q:"Which race is the final leg of the American Triple Crown?",n:['us'],a:"The Belmont Stakes",o:["The Kentucky Derby", "The Preakness Stakes", "The Breeders’ Cup"]},
+  {c:"spo",d:3,y:1997,q:"Who became the youngest Masters champion in 1997?",a:"Tiger Woods",o:["Phil Mickelson", "Jack Nicklaus", "Rory McIlroy"]},
+  {c:"spo",d:4,y:1974,q:"In which African city did Ali beat Foreman in the “Rumble in the Jungle”?",a:"Kinshasa",o:["Lagos", "Nairobi", "Johannesburg"]},
+  {c:"spo",d:4,y:null,q:"How long is a marathon, in miles?",a:"26.2 miles",o:["24.5 miles", "25 miles", "30 miles"]},
+  {c:"spo",d:4,y:1941,q:"Which Yankee had a 56-game hitting streak in 1941?",n:['us'],a:"Joe DiMaggio",o:["Babe Ruth", "Lou Gehrig", "Mickey Mantle"]},
+  {c:"spo",d:4,y:null,q:"In which sport would you use a shuttlecock?",a:"Badminton",o:["Squash", "Table tennis", "Lacrosse"]},
+  {c:"spo",d:5,y:1908,q:"Which MLB team went from 1908 to 2016 without a World Series title?",n:['us','ca'],a:"The Chicago Cubs",o:["The Boston Red Sox", "The Cleveland Indians", "The Chicago White Sox"]},
+  {c:"spo",d:5,y:1972,q:"Which NFL team completed the only perfect season, in 1972?",n:['us'],a:"The Miami Dolphins",o:["The Pittsburgh Steelers", "The Dallas Cowboys", "The New England Patriots"]},
+  {c:"spo",d:5,y:null,q:"In curling, what is the target area called?",a:"The house",o:["The ring", "The button", "The bullseye"]},
+  {c:"spo",d:5,y:1960,q:"Which Ethiopian won the 1960 Olympic marathon running barefoot?",a:"Abebe Bikila",o:["Haile Gebrselassie", "Kipchoge Keino", "Kenenisa Bekele"]},
 ];
 BANK.forEach((q,i)=>q.id='q'+i);
 
@@ -424,6 +433,13 @@ function playerYears(){ return Object.values(players).map(p=>+p.year).filter(y=>
 function playerNations(){ return [...new Set(Object.values(players).map(p=>p.nation).filter(id=>nationOf(id)))]; }
 // A question tagged with nations is only fair game when everyone at the table is from one of them.
 function nationOk(q, nations){ return !q.n || !nations.length || nations.every(id=>q.n.includes(id)); }
+// Three distinct wrong answers that don't repeat the right one; null when there aren't enough.
+function cleanChoices(o, a){
+  if(!Array.isArray(o)) return null;
+  const seen = new Set([String(a||'').trim().toLowerCase()]), out=[];
+  for(const x of o){ const t=String(x||'').trim(); const k=t.toLowerCase(); if(t && !seen.has(k)){ seen.add(k); out.push(t); } if(out.length===3) break; }
+  return out.length===3 ? out : null;
+}
 function setReady(catId){ return !generator() || sets[catId]!==undefined; }
 // Category schedule: a shuffled category order per game; the QM and the category both advance every
 // turn. Player p in round r hosts catOrder[(r + k*p) % 6], which gives every player all six categories
@@ -443,7 +459,8 @@ async function ensureSet(catId){
       new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),90000))
     ]);
     const clean = (Array.isArray(raw)?raw:[]).filter(x=>x&&x.q&&x.a).map((x,i)=>({
-      id:'g'+catId+'_'+i, d:Math.min(5,Math.max(1,Math.round(+x.d||3))), q:String(x.q).trim(), a:String(x.a).trim(), y:(+x.y>1000?+x.y:null)
+      id:'g'+catId+'_'+i, d:Math.min(5,Math.max(1,Math.round(+x.d||3))), q:String(x.q).trim(), a:String(x.a).trim(), y:(+x.y>1000?+x.y:null),
+      o: cleanChoices(x.o, x.a)
     }));
     if(clean.length<5) throw new Error('too few questions');
     await setRef(catId).set({qs:clean, source:'gemini', at:Date.now()});
@@ -473,7 +490,7 @@ function pickOptions(catId, usedIds){
     const total = pool.reduce((s,q)=>s+weight(q),0);
     let r = Math.random()*total, pick = pool[pool.length-1];
     for(const q of pool){ r -= weight(q); if(r<=0){ pick=q; break; } }
-    out.push({id:pick.id, d:pick.d, q:pick.q, a:pick.a});
+    out.push({id:pick.id, d:pick.d, q:pick.q, a:pick.a, o:cleanChoices(pick.o, pick.a)});
   }
   return out;
 }
@@ -537,7 +554,7 @@ let sim = false;
 // ---------- App state ----------
 const app = document.getElementById('app');
 let db = null, code = codeFromHash(), game = null, players = {}, answers = {}, unsubs = [], writeBlocked = false, busy = false;
-let draft = {name: store('qm.name')||'', year: store('qm.year')||'', nation: store('qm.nation')||'', answer:'', custom:'', customA:''};
+let draft = {name: store('qm.name')||'', year: store('qm.year')||'', nation: store('qm.nation')||'', answer:'', custom:'', customA:'', customW:'', mc: store('qm.mc')==='1'};
 let judged = {}; // local QM judgments before reveal
 
 function gameRef(){ return db.doc('games/'+code); }
@@ -592,9 +609,11 @@ async function startGame(){
   await gameRef().set({...game, phase:'pick', order, scores, turn:0, cat:CATS.findIndex(c=>c.id===catOrderNow[0]), round:0, usedIds:[], options:null, question:null, results:null, group: sim?null:groupKey(), ai: !!generator(), catOrder: catOrderNow});
   ensureSet(catOrderNow[0]);
 }
-async function chooseQuestion(opt){
+// mc: ask it as multiple choice. The four choices are shuffled once here so every phone shows the same order.
+async function chooseQuestion(opt, mc){
   judged = {};
-  await gameRef().set({...game, phase:'answer', round:(game.round||0)+1, question:{q:opt.q, a:opt.a, d:opt.d||0, custom:!opt.id}, results:null});
+  const choices = (mc && opt.o && opt.o.length===3) ? shuffle([opt.a, ...opt.o]) : null;
+  await gameRef().set({...game, phase:'answer', round:(game.round||0)+1, question:{q:opt.q, a:opt.a, d:opt.d||0, custom:!opt.id, mc:!!choices, choices}, results:null});
 }
 async function submitAnswer(text){
   await answerRef().set({round: game.round, text, at: Date.now()});
@@ -793,16 +812,20 @@ function view_pick(qm){
       ${failed?`<p class="muted">Couldn’t reach the question writer; using built-in questions.</p>`:''}</div>`;
   }
   if(isQM()){
+    const mc = !!draft.mc;
     return `<div class="card">
       <p class="eyebrow">You’re the Quiz Master</p>
       <h2>Pick a question the room will split on.</h2>
       <p class="muted">Five questions, from gimme to stumper, in no particular order. Too easy or too hard scores you nothing.</p>
-      <div class="stack">${(game.options||[]).map((o,i)=>`<button class="qopt" data-act="pick" data-i="${i}" ${busy?'disabled':''}><span>${esc(o.q)}</span></button>`).join('')}</div>
+      <button class="toggle ${mc?'on':''}" data-act="togglemc" role="switch" aria-checked="${mc}"><span class="knob"></span><span>Ask as multiple choice</span></button>
+      ${mc?`<p class="muted">Players pick from four answers. Handy when a question would otherwise stump everyone.</p>`:''}
+      <div class="stack">${(game.options||[]).map((o,i)=>`<button class="qopt" data-act="pick" data-i="${i}" ${busy?'disabled':''}><span>${esc(o.q)}</span>${mc?(o.o?`<span class="diff">A · B · C · D</span>`:`<span class="diff">Open answer only</span>`):''}</button>`).join('')}</div>
     </div>
     <div class="card">
       <h3>Or ask your own</h3>
       <div><label for="custom">Question</label><input id="custom" value="${esc(draft.custom)}" placeholder="Type a question"></div>
       <div><label for="customa">Answer</label><input id="customa" value="${esc(draft.customA)}" placeholder="The answer you’ll reveal"></div>
+      ${mc?`<div><label for="customw">Three wrong answers</label><input id="customw" value="${esc(draft.customW)}" placeholder="Separate with commas"></div>`:''}
       <button data-act="pickcustom" ${busy?'disabled':''}>Ask this question</button>
     </div>`;
   }
@@ -814,7 +837,7 @@ function view_answer(qm){
   const inRound = id => answers[id] && answers[id].round===game.round;
   const done = others.filter(inRound);
   const q = game.question;
-  const qcard = `<div class="card"><p class="eyebrow">${q.custom?'Quiz Master’s own question':'Question'}</p><p class="big-q">${esc(q.q)}</p></div>`;
+  const qcard = `<div class="card"><p class="eyebrow">${q.custom?'Quiz Master’s own question':'Question'}${q.mc?' · multiple choice':''}</p><p class="big-q">${esc(q.q)}</p>${q.mc&&isQM()?choiceList(q.choices):''}</div>`;
   if(isQM()){
     return qcard + `<div class="card">
       <h3>Answers in: ${done.length} of ${others.length}</h3>
@@ -827,11 +850,20 @@ function view_answer(qm){
   if(inRound(PID)){
     return qcard + `<div class="card"><p class="eyebrow">Your answer</p><p class="big-q">${esc(answers[PID].text)}</p><p class="muted">Locked in. Waiting for the others (${done.length} of ${others.length}).</p><button class="ghost" data-act="changeanswer">Change it</button></div>`;
   }
+  if(q.mc){
+    return qcard + `<div class="card">
+      <p class="eyebrow">Pick one</p>
+      <div class="stack">${q.choices.map((c,i)=>`<button class="qopt choice" data-act="choose" data-i="${i}" ${busy?'disabled':''}><span class="letter">${'ABCD'[i]}</span><span>${esc(c)}</span></button>`).join('')}</div>
+    </div>`;
+  }
   return qcard + `<div class="card">
     <label for="answer">Your answer</label>
     <input id="answer" class="answer-box" value="${esc(draft.answer)}" placeholder="Type your answer" autocomplete="off" autocorrect="off" enterkeyhint="done">
     <button class="primary" data-act="answer" ${busy?'disabled':''}>Lock it in</button>
   </div>`;
+}
+function choiceList(choices){
+  return `<div class="choices">${(choices||[]).map((c,i)=>`<span><b>${'ABCD'[i]}</b> ${esc(c)}</span>`).join('')}</div>`;
 }
 
 function view_judge(qm){
@@ -839,10 +871,12 @@ function view_judge(qm){
   const q = game.question;
   const ansOf = id => (answers[id]&&answers[id].round===game.round)?answers[id].text:'';
   if(isQM()){
+    // Multiple choice marks itself; the Quiz Master can still override a mark.
+    if(q.mc) others.forEach(id=>{ if(judged[id]===undefined && ansOf(id)) judged[id] = ansOf(id)===q.a; });
     const correct = others.filter(id=>judged[id]).length;
     return `<div class="card"><p class="eyebrow">Question</p><p class="big-q">${esc(q.q)}</p><p class="eyebrow">Answer</p><p class="big-q" style="color:${CATS[game.cat].color}">${esc(q.a)}</p></div>
     <div class="card">
-      <h3>Go around the room, then mark each answer</h3>
+      <h3>${q.mc?'Marked automatically — check, then reveal':'Go around the room, then mark each answer'}</h3>
       <div class="plist">${others.map(id=>`<div class="prow"><div class="grow"><div class="name">${esc(nameOf(id))}</div><div class="ans">${esc(ansOf(id))||'<i>no answer</i>'}</div></div>
         <div class="judge"><button data-act="mark" data-id="${id}" data-v="1" class="${judged[id]===true?'on-good':''}" aria-label="Correct">✓</button><button data-act="mark" data-id="${id}" data-v="0" class="${judged[id]===false?'on-bad':''}" aria-label="Incorrect">✗</button></div></div>`).join('')}</div>
       <div class="notice">If you reveal now: ${correct} of ${others.length} correct → you earn <b>${qmPoints(correct,others.length)}</b> of ${QM_MAX}.</div>
@@ -885,7 +919,7 @@ function view_final(){
 function bind(){
   app.querySelectorAll('select').forEach(sel=>sel.addEventListener('change', e=>{ if(e.target.id==='nation') draft.nation=e.target.value; }));
   app.querySelectorAll('input').forEach(inp=>{
-    inp.addEventListener('input', e=>{ const m={name:'name',year:'year',answer:'answer',custom:'custom',customa:'customA'}; if(m[e.target.id]) draft[m[e.target.id]]=e.target.value; });
+    inp.addEventListener('input', e=>{ const m={name:'name',year:'year',answer:'answer',custom:'custom',customa:'customA',customw:'customW'}; if(m[e.target.id]) draft[m[e.target.id]]=e.target.value; });
     inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ const b=inp.closest('.card').querySelector('button.primary, button[data-act]'); if(b) b.click(); } });
   });
   app.querySelectorAll('[data-act]').forEach(btn=>btn.addEventListener('click', ()=>act(btn.dataset)));
@@ -904,8 +938,16 @@ function act(d){
     case 'copylink': { const url=location.href.split('#')[0].replace(/\/?$/,'/')+'#'+code; navigator.clipboard.writeText(url).then(()=>{},()=>{}); return; }
     case 'join': { const name=draft.name.trim(), year=draft.year.trim(), nation=draft.nation; if(!name||!/^\d{4}$/.test(year)||!nationOf(nation)) return; return safeWrite(()=>joinGame(name,year,nation)); }
     case 'start': return safeWrite(startGame);
-    case 'pick': return safeWrite(()=>chooseQuestion(game.options[+d.i]));
-    case 'pickcustom': { const q=draft.custom.trim(), a=draft.customA.trim(); if(!q||!a) return; draft.custom=''; draft.customA=''; return safeWrite(()=>chooseQuestion({q,a,d:0})); }
+    case 'togglemc': draft.mc=!draft.mc; store('qm.mc', draft.mc?'1':'0'); render(); return;
+    case 'pick': return safeWrite(()=>chooseQuestion(game.options[+d.i], draft.mc));
+    case 'pickcustom': {
+      const q=draft.custom.trim(), a=draft.customA.trim(); if(!q||!a) return;
+      const o = draft.mc ? cleanChoices(draft.customW.split(/[,;\n]/), a) : null;
+      if(draft.mc && !o) return;   // asked for multiple choice but didn't give three distinct wrong answers
+      draft.custom=''; draft.customA=''; draft.customW='';
+      return safeWrite(()=>chooseQuestion({q,a,d:0,o}, draft.mc));
+    }
+    case 'choose': { const t=game.question.choices[+d.i]; if(t==null) return; return safeWrite(()=>submitAnswer(t)); }
     case 'answer': { const t=draft.answer.trim(); if(!t) return; draft.answer=''; return safeWrite(()=>submitAnswer(t)); }
     case 'changeanswer': draft.answer=answers[PID].text; return safeWrite(()=>answerRef().delete());
     case 'close': return safeWrite(closeAnswers);
@@ -937,7 +979,7 @@ function fsStore(fs, M){
 // ---------- Gemini question writer (Firebase AI Logic) ----------
 function makeGeminiGenerator(ai, getGenerativeModel, Schema){
   const schema = Schema.array({ items: Schema.object({
-    properties: { q: Schema.string(), a: Schema.string(), d: Schema.integer(), y: Schema.integer({nullable:true}) },
+    properties: { q: Schema.string(), a: Schema.string(), d: Schema.integer(), y: Schema.integer({nullable:true}), o: Schema.array({items: Schema.string()}) },
     optionalProperties: ['y']
   })});
   // The no-cost tier allows about 20 requests per day per model, so walk a ladder of models
@@ -962,9 +1004,10 @@ Players were born in: ${years.length?years.join(', '):'the 1970s to 2000s'}. Fav
 ${where}
 Write exactly ${per*5} questions: ${per} at each difficulty 1, 2, 3, 4 and 5. Difficulty 1 = a gimme: everyone at the table, including people who never play trivia, answers instantly (household names, the most famous landmarks, blockbuster films, grade-school facts); 2 = most adults know it; 3 = a reasonably informed adult has a fair shot; 4 = a regular trivia-night player would get it; 5 = only a committed trivia fan would know it. Judge difficulty by how well the players described above would know it, not by how obscure it is in general.
 Rules: each question is at most 18 words and reads naturally aloud; each has one clear, verifiable answer of 1 to 5 words; no true/false, no multiple choice, no "which of these"; no two questions about the same subject; the question must not contain its own answer. Set y to the year the subject is most associated with, or null if timeless.
+Set o to exactly 3 wrong answers the Quiz Master can offer as multiple choice: the same kind of thing as the right answer (a director for a director, a year for a year, a capital for a capital), believable to someone who half-knows the subject, none of them correct or arguably correct, and none repeating the right answer.
+Return only a JSON array of objects with keys q, a, d, y, o.
 Do not reuse or closely paraphrase any of these questions the group has already seen:
-${avoid.length?avoid.map(t=>'- '+t).join('\n'):'(none yet)'}
-Return only a JSON array of objects with keys q, a, d, y.`;
+${avoid.length?avoid.map(t=>'- '+t).join('\n'):'(none yet)'}`;
     let lastErr = null;
     for(let i=start; i<models.length; i++){
       try{
