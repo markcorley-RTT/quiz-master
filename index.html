@@ -551,9 +551,11 @@ async function safeWrite(fn){
   busy=false; render();
 }
 
+function lastCode(){ const c=store('qm.last'); return (!sim && c && /^[A-Z0-9]{4}$/.test(c) && c!=='DEMO') ? c : null; }
 function subscribe(){
   unsubs.forEach(u=>u()); unsubs=[]; game=null; players={}; answers={};
   if(!code) { render(); return; }
+  if(!sim) store('qm.last', code);
   unsubs.push(gameRef().onSnapshot(s=>{ game = s.exists ? s.data() : null; render(); }, e=>{ console.error(e); }));
   unsubs.push(db.collection('games/'+code+'/players').onSnapshot(s=>{ players={}; s.docs.forEach(d=>players[d.id]=d.data()); render(); }, e=>console.error(e)));
   unsubs.push(db.collection('games/'+code+'/answers').onSnapshot(s=>{ answers={}; s.docs.forEach(d=>answers[d.id]=d.data()); render(); }, e=>console.error(e)));
@@ -694,6 +696,11 @@ function view_home(){
     <h1>Pick the question that splits the room.</h1>
     <p class="muted">The Quiz Master role passes every question. You score most when about half the others get it right, nothing if everyone or no one does.</p>
   </div>
+  ${lastCode()?`<div class="card">
+    <h2>Back to your game</h2>
+    <p class="muted">You were in game <b>${esc(lastCode())}</b>.</p>
+    <button class="primary" data-act="rejoin">Rejoin ${esc(lastCode())}</button>
+  </div>`:''}
   <div class="card">
     <h2>Start a new game</h2>
     <button class="primary" data-act="create" ${busy?'disabled':''}>Create game</button>
@@ -730,12 +737,13 @@ function view_lobby(){
       <div><label for="nation">Where you’re from</label><select id="nation"><option value="" ${draft.nation?'':'selected'} disabled>Choose a country</option>${NATIONS.map(n=>`<option value="${n.id}" ${draft.nation===n.id?'selected':''}>${n.flag} ${esc(n.name)}</option>`).join('')}</select></div>
       <p class="muted">Questions are tuned to the countries at the table: a mixed table only gets subjects everyone would know.</p>
       <button class="primary" data-act="join" ${busy?'disabled':''}>Join</button>
+      ${list.length?`<p class="muted">Already joined on another phone or browser? Tap your name in the list below instead.</p>`:''}
     </div>`;
   }
   const nations = playerNations();
   html += `<div class="card">
     <h2>Players (${list.length})</h2>
-    <div class="plist">${list.map(([id,p])=>`<div class="prow"><span class="name">${esc(p.name)}</span><span class="muted">${esc(p.year)}</span><span class="muted" title="${esc((nationOf(p.nation)||{}).name||'')}">${(nationOf(p.nation)||{}).flag||''}</span>${id===PID?'<span class="chip">you</span>':''}</div>`).join('')||'<p class="muted">Waiting for players to join…</p>'}</div>
+    <div class="plist">${list.map(([id,p])=>`<div class="prow"><span class="name grow">${esc(p.name)}</span><span class="muted">${esc(p.year)}</span><span class="muted" title="${esc((nationOf(p.nation)||{}).name||'')}">${(nationOf(p.nation)||{}).flag||''}</span>${id===PID?'<span class="chip">you</span>':(!me?`<button class="small" data-act="claim" data-id="${id}">That’s me</button>`:'')}</div>`).join('')||'<p class="muted">Waiting for players to join…</p>'}</div>
     ${nations.length>1?`<p class="muted">Mixed table (${nations.map(id=>nationOf(id).flag).join(' ')}): questions will stick to what’s known across all of these countries.</p>`:''}
     ${me&&generator()&&!sim?`<p class="muted">${sets.geo&&sets.geo.source==='gemini'?'First round of questions is ready.':'Writing the first round of questions for this group in the background…'}</p>`:''}
     ${me?`<p class="muted">Has everyone joined? Anyone can confirm. The first Quiz Master is picked at random.</p><button class="primary" data-act="start" ${list.length<2||busy?'disabled':''}>Everyone’s here, start</button>`:''}
@@ -751,9 +759,29 @@ function view_round(){
     <p class="eyebrow">Question ${game.turn+1} of ${totalTurns()} · Quiz Master: ${esc(nameOf(qm))}</p>
     <h2>${esc(cat.name)}</h2>
   </div>` + view_scoreboard();
-  if(!players[PID]) return header + `<div class="card"><h2>This game is already in progress</h2><p class="muted">You can watch the scores, but you can’t join until the next game.</p></div>`;
+  if(!players[PID]) return header + view_rejoin();
   const fn = { pick: view_pick, answer: view_answer, judge: view_judge, reveal: view_reveal }[game.phase] || (()=>'' );
   return header + fn(qm);
+}
+
+// Someone whose phone lost its saved identity (new browser, private tab, cleared data) takes over their
+// original seat here. Scores and turn order are keyed by that seat, so nothing is lost.
+function view_rejoin(){
+  const ids = (game.order&&game.order.length) ? game.order : Object.keys(players);
+  return `<div class="card">
+    <h2>Back in the game?</h2>
+    <p class="muted">Tap your name to pick up where you left off. New players can’t join until the next game.</p>
+    <div class="stack">${ids.map(id=>`<button data-act="claim" data-id="${id}">${esc(nameOf(id))}<span class="muted" style="font-weight:400"> · ${esc(players[id]&&players[id].year||'')} ${(nationOf(players[id]&&players[id].nation)||{}).flag||''}</span></button>`).join('')}</div>
+    <p class="muted">Not you? You can watch the scores from here.</p>
+  </div>`;
+}
+function claimSeat(id){
+  if(!players[id]) return;
+  PID = id; store('qm.pid', id);
+  const p = players[id]; draft.name=p.name||draft.name; draft.year=p.year||draft.year; draft.nation=p.nation||draft.nation;
+  store('qm.name',draft.name); store('qm.year',draft.year); store('qm.nation',draft.nation);
+  judged = {}; assigning = null; draft.answer='';
+  render();
 }
 
 function view_pick(qm){
@@ -870,7 +898,9 @@ function act(d){
     case 'autoanswer': return safeWrite(autoAnswerOthers);
     case 'exitdemo': { sim=false; code=null; db=realDb; PID=store('qm.pid'); location.hash=''; subscribe(); return; }
     case 'joincode': { const v=(document.getElementById('joincode').value||'').trim().toUpperCase(); if(/^[A-Z0-9]{4}$/.test(v)){ code=v; location.hash=v; subscribe(); } return; }
-    case 'leave': sim=false; code=null; db=realDb; PID=store('qm.pid'); location.hash=''; subscribe(); return;
+    case 'leave': sim=false; code=null; db=realDb; PID=store('qm.pid'); store('qm.last',''); location.hash=''; subscribe(); return;
+    case 'rejoin': { const c=lastCode(); if(c){ code=c; location.hash=c; subscribe(); } return; }
+    case 'claim': return claimSeat(d.id);
     case 'copylink': { const url=location.href.split('#')[0].replace(/\/?$/,'/')+'#'+code; navigator.clipboard.writeText(url).then(()=>{},()=>{}); return; }
     case 'join': { const name=draft.name.trim(), year=draft.year.trim(), nation=draft.nation; if(!name||!/^\d{4}$/.test(year)||!nationOf(nation)) return; return safeWrite(()=>joinGame(name,year,nation)); }
     case 'start': return safeWrite(startGame);
