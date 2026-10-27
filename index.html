@@ -50,7 +50,9 @@ button.primary{background:var(--accent);color:var(--accent-fg);border-color:tran
 button.ghost{background:transparent}
 button:disabled{opacity:.45;cursor:default}
 button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);width:100%;min-height:48px}
+input,select{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);width:100%;min-height:48px}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:40px}
+select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 label{font-size:.85rem;font-weight:700;display:block;margin-bottom:4px}
 .code{font-family:var(--display);font-weight:800;font-size:2.4rem;letter-spacing:.18em;font-variant-numeric:tabular-nums}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;background:var(--soft)}
@@ -123,6 +125,18 @@ const CATS = [
   {id:'sci', name:'Science & Nature', color:'var(--c-sci)'},
   {id:'spo', name:'Sports & Leisure', color:'var(--c-spo)'},
 ];
+// Nationalities offered at join. Questions are tuned to the countries at the table: a single-country
+// table gets local flavor, a mixed table gets only subjects known across all of those countries.
+const NATIONS = [
+  {id:'us', name:'United States', flag:'🇺🇸'},
+  {id:'uk', name:'United Kingdom', flag:'🇬🇧'},
+  {id:'ca', name:'Canada', flag:'🇨🇦'},
+  {id:'au', name:'Australia', flag:'🇦🇺'},
+  {id:'nz', name:'New Zealand', flag:'🇳🇿'},
+  {id:'ie', name:'Ireland', flag:'🇮🇪'},
+];
+function nationOf(id){ return NATIONS.find(n=>n.id===id); }
+// n: countries where the question counts as local knowledge; only offered when every player is from one of them.
 const BANK = [
   // Geography
   {c:'geo',d:1,y:null,q:'What is the capital of France?',a:'Paris'},
@@ -168,25 +182,25 @@ const BANK = [
   {c:'ent',d:5,y:1950,q:'In which 1950 film does Gloria Swanson play faded silent-film star Norma Desmond?',a:'Sunset Boulevard'},
   // History
   {c:'his',d:1,y:1969,q:'Who was the first person to walk on the Moon?',a:'Neil Armstrong'},
-  {c:'his',d:1,y:1776,q:'In what year was the U.S. Declaration of Independence adopted?',a:'1776'},
+  {c:'his',d:1,y:1776,q:'In what year was the U.S. Declaration of Independence adopted?',n:['us'],a:'1776'},
   {c:'his',d:1,y:1989,q:'Which wall came down in 1989, symbolizing the end of the Cold War?',a:'The Berlin Wall'},
   {c:'his',d:1,y:2001,q:'In what year did the September 11 attacks take place?',a:'2001'},
   {c:'his',d:2,y:1912,q:'Which ocean liner sank on its maiden voyage in 1912?',a:'The Titanic'},
   {c:'his',d:2,y:1945,q:'In what year did World War II end?',a:'1945'},
-  {c:'his',d:2,y:1865,q:'Who assassinated Abraham Lincoln?',a:'John Wilkes Booth'},
-  {c:'his',d:2,y:1963,q:'In which city was John F. Kennedy assassinated?',a:'Dallas'},
+  {c:'his',d:2,y:1865,q:'Who assassinated Abraham Lincoln?',n:['us'],a:'John Wilkes Booth'},
+  {c:'his',d:2,y:1963,q:'In which city was John F. Kennedy assassinated?',n:['us'],a:'Dallas'},
   {c:'his',d:3,y:1215,q:'Which charter did King John of England agree to in 1215?',a:'Magna Carta'},
   {c:'his',d:3,y:1917,q:'In which year did the Russian Revolution take place?',a:'1917'},
-  {c:'his',d:3,y:1974,q:'Which U.S. president resigned from office in 1974?',a:'Richard Nixon'},
+  {c:'his',d:3,y:1974,q:'Which U.S. president resigned from office in 1974?',n:['us'],a:'Richard Nixon'},
   {c:'his',d:3,y:1066,q:'Which 1066 battle made William the Conqueror King of England?',a:'The Battle of Hastings'},
   {c:'his',d:3,y:1492,q:'Which explorer, sailing for Spain, reached the Americas in 1492?',a:'Christopher Columbus'},
   {c:'his',d:4,y:1815,q:'At which 1815 battle was Napoleon finally defeated?',a:'Waterloo'},
   {c:'his',d:4,y:1961,q:'Who was the first human to travel into space?',a:'Yuri Gagarin'},
   {c:'his',d:4,y:1453,q:'Which city fell to the Ottoman Empire in 1453?',a:'Constantinople'},
-  {c:'his',d:4,y:1803,q:'Which 1803 land deal roughly doubled the size of the United States?',a:'The Louisiana Purchase'},
+  {c:'his',d:4,y:1803,q:'Which 1803 land deal roughly doubled the size of the United States?',n:['us'],a:'The Louisiana Purchase'},
   {c:'his',d:5,y:1648,q:'Which 1648 peace settlement ended the Thirty Years’ War?',a:'The Peace of Westphalia'},
   {c:'his',d:5,y:null,q:'Who was the first emperor of a unified China?',a:'Qin Shi Huang'},
-  {c:'his',d:5,y:1381,q:'Who led the Peasants’ Revolt in England in 1381?',a:'Wat Tyler'},
+  {c:'his',d:5,y:1381,q:'Who led the Peasants’ Revolt in England in 1381?',n:['uk','ie'],a:'Wat Tyler'},
   {c:'his',d:5,y:1856,q:'Which war, which ended in 1856, included the Charge of the Light Brigade?',a:'The Crimean War'},
   // Arts & Literature
   {c:'art',d:1,y:null,q:'Who painted the Mona Lisa?',a:'Leonardo da Vinci'},
@@ -238,32 +252,32 @@ const BANK = [
   {c:'spo',d:1,y:null,q:'In which sport would you perform a slam dunk?',a:'Basketball'},
   {c:'spo',d:1,y:null,q:'How many holes are on a standard golf course?',a:'18'},
   {c:'spo',d:2,y:1896,q:'In which city were the first modern Olympic Games held in 1896?',a:'Athens'},
-  {c:'spo',d:2,y:null,q:'How many points is a touchdown worth in American football?',a:'6'},
+  {c:'spo',d:2,y:null,q:'How many points is a touchdown worth in American football?',n:['us'],a:'6'},
   {c:'spo',d:2,y:2016,q:'Which Jamaican sprinter won the Olympic 100 m three times in a row (2008, 2012, 2016)?',a:'Usain Bolt'},
   {c:'spo',d:2,y:null,q:'What is the national sport of Japan?',a:'Sumo wrestling'},
   {c:'spo',d:3,y:1998,q:'Which player won six NBA championships with the Chicago Bulls in the 1990s?',a:'Michael Jordan'},
   {c:'spo',d:3,y:null,q:'In tennis, what is a score of zero called?',a:'Love'},
   {c:'spo',d:3,y:1966,q:'Which country won the 1966 FIFA World Cup?',a:'England'},
   {c:'spo',d:3,y:null,q:'In chess, which piece moves only diagonally?',a:'The bishop'},
-  {c:'spo',d:3,y:2021,q:'Which quarterback won his seventh Super Bowl in February 2021?',a:'Tom Brady'},
+  {c:'spo',d:3,y:2021,q:'Which quarterback won his seventh Super Bowl in February 2021?',n:['us'],a:'Tom Brady'},
   {c:'spo',d:3,y:2008,q:'Which swimmer won eight gold medals at the 2008 Beijing Olympics?',a:'Michael Phelps'},
   {c:'spo',d:4,y:1936,q:'Which American athlete won four gold medals at the 1936 Berlin Olympics?',a:'Jesse Owens'},
   {c:'spo',d:4,y:null,q:'How long is an Olympic-size swimming pool?',a:'50 meters'},
   {c:'spo',d:4,y:1954,q:'Who was the first person to run a mile in under four minutes, in 1954?',a:'Roger Bannister'},
-  {c:'spo',d:4,y:null,q:'In cricket, how many balls are bowled in a standard over?',a:'6'},
-  {c:'spo',d:4,y:1973,q:'Which horse won the 1973 Triple Crown, taking the Belmont by 31 lengths?',a:'Secretariat'},
-  {c:'spo',d:5,y:1980,q:'Which team did the U.S. beat in the 1980 “Miracle on Ice” Olympic hockey game?',a:'The Soviet Union'},
+  {c:'spo',d:4,y:null,q:'In cricket, how many balls are bowled in a standard over?',n:['uk','ie','au','nz'],a:'6'},
+  {c:'spo',d:4,y:1973,q:'Which horse won the 1973 Triple Crown, taking the Belmont by 31 lengths?',n:['us'],a:'Secretariat'},
+  {c:'spo',d:5,y:1980,q:'Which team did the U.S. beat in the 1980 “Miracle on Ice” Olympic hockey game?',n:['us','ca'],a:'The Soviet Union'},
   {c:'spo',d:5,y:1988,q:'Who won the 1988 Olympic 100 m in Seoul but was stripped of the gold for doping?',a:'Ben Johnson'},
   {c:'spo',d:5,y:null,q:'Which country has won the most Davis Cup titles in tennis?',a:'The United States'},
   // Additional questions
   {c:"geo",d:1,y:null,q:"What is the largest country in the world by area?",a:"Russia"},
-  {c:"geo",d:1,y:null,q:"Which U.S. state is the Grand Canyon in?",a:"Arizona"},
+  {c:"geo",d:1,y:null,q:"Which U.S. state is the Grand Canyon in?",n:['us'],a:"Arizona"},
   {c:"geo",d:1,y:null,q:"What is the capital of Italy?",a:"Rome"},
   {c:"geo",d:1,y:null,q:"Which country is shaped like a boot?",a:"Italy"},
   {c:"geo",d:1,y:null,q:"What is the capital of Japan?",a:"Tokyo"},
   {c:"geo",d:2,y:null,q:"Which desert covers much of Mongolia and northern China?",a:"The Gobi"},
   {c:"geo",d:2,y:null,q:"What is the capital of Spain?",a:"Madrid"},
-  {c:"geo",d:2,y:null,q:"Which U.S. state has the most people?",a:"California"},
+  {c:"geo",d:2,y:null,q:"Which U.S. state has the most people?",n:['us'],a:"California"},
   {c:"geo",d:2,y:null,q:"In which country would you find Machu Picchu?",a:"Peru"},
   {c:"geo",d:3,y:null,q:"What is the capital of Turkey?",a:"Ankara"},
   {c:"geo",d:3,y:null,q:"Which African country has the largest population?",a:"Nigeria"},
@@ -272,7 +286,7 @@ const BANK = [
   {c:"geo",d:4,y:null,q:"What is the capital of New Zealand?",a:"Wellington"},
   {c:"geo",d:4,y:null,q:"Which country has the most time zones, counting overseas territories?",a:"France"},
   {c:"geo",d:4,y:null,q:"Which strait separates Asia from North America?",a:"The Bering Strait"},
-  {c:"geo",d:4,y:null,q:"What is the only U.S. state capital with three words in its name?",a:"Salt Lake City"},
+  {c:"geo",d:4,y:null,q:"What is the only U.S. state capital with three words in its name?",n:['us'],a:"Salt Lake City"},
   {c:"geo",d:5,y:null,q:"What is the capital of Kyrgyzstan?",a:"Bishkek"},
   {c:"geo",d:5,y:null,q:"Which African country is the only one bordered by both the Mediterranean and the Red Sea?",a:"Egypt"},
   {c:"geo",d:5,y:null,q:"Which country is entirely surrounded by South Africa?",a:"Lesotho"},
@@ -287,7 +301,7 @@ const BANK = [
   {c:"ent",d:2,y:2016,q:"Who sang “Shape of You”?",a:"Ed Sheeran"},
   {c:"ent",d:3,y:1994,q:"Who directed Pulp Fiction?",a:"Quentin Tarantino"},
   {c:"ent",d:3,y:1977,q:"Which band released the album Rumours?",a:"Fleetwood Mac"},
-  {c:"ent",d:3,y:2005,q:"Which sitcom was set at the Dunder Mifflin paper company?",a:"The Office"},
+  {c:"ent",d:3,y:2005,q:"Which sitcom was set at the Dunder Mifflin paper company?",n:['us','ca'],a:"The Office"},
   {c:"ent",d:3,y:1965,q:"Which Julie Andrews film features the von Trapp family?",a:"The Sound of Music"},
   {c:"ent",d:4,y:1959,q:"Who directed North by Northwest?",a:"Alfred Hitchcock"},
   {c:"ent",d:4,y:2000,q:"Which band released the album Kid A?",a:"Radiohead"},
@@ -299,18 +313,18 @@ const BANK = [
   {c:"ent",d:5,y:1944,q:"Which film noir has an insurance salesman plotting murder with Barbara Stanwyck?",a:"Double Indemnity"},
   {c:"his",d:1,y:1492,q:"In what year did Columbus first sail to the Americas?",a:"1492"},
   {c:"his",d:1,y:1963,q:"Who gave the “I Have a Dream” speech?",a:"Martin Luther King Jr."},
-  {c:"his",d:1,y:null,q:"Who was the first President of the United States?",a:"George Washington"},
+  {c:"his",d:1,y:null,q:"Who was the first President of the United States?",n:['us'],a:"George Washington"},
   {c:"his",d:1,y:1986,q:"Which space shuttle broke apart shortly after launch in 1986?",a:"Challenger"},
   {c:"his",d:2,y:1941,q:"Which attack brought the United States into World War II?",a:"Pearl Harbor"},
   {c:"his",d:2,y:1969,q:"What was the name of the first Moon-landing mission?",a:"Apollo 11"},
-  {c:"his",d:2,y:1955,q:"Who refused to give up her bus seat in Montgomery in 1955?",a:"Rosa Parks"},
+  {c:"his",d:2,y:1955,q:"Who refused to give up her bus seat in Montgomery in 1955?",n:['us'],a:"Rosa Parks"},
   {c:"his",d:2,y:1789,q:"The storming of which prison began the French Revolution?",a:"The Bastille"},
   {c:"his",d:3,y:1991,q:"Which Iraqi dictator was driven out of Kuwait in 1991?",a:"Saddam Hussein"},
   {c:"his",d:3,y:1947,q:"Which two countries were created by the 1947 partition of British India?",a:"India and Pakistan"},
-  {c:"his",d:3,y:1920,q:"Which U.S. constitutional amendment gave women the vote?",a:"The 19th"},
+  {c:"his",d:3,y:1920,q:"Which U.S. constitutional amendment gave women the vote?",n:['us'],a:"The 19th"},
   {c:"his",d:3,y:1588,q:"Which navy was defeated trying to invade England in 1588?",a:"The Spanish Armada"},
   {c:"his",d:4,y:1521,q:"Which Spanish conquistador toppled the Aztec Empire?",a:"Hernán Cortés"},
-  {c:"his",d:4,y:1832,q:"Which 1832 act expanded the vote in Britain?",a:"The Great Reform Act"},
+  {c:"his",d:4,y:1832,q:"Which 1832 act expanded the vote in Britain?",n:['uk','ie'],a:"The Great Reform Act"},
   {c:"his",d:4,y:1979,q:"Who became the first female Prime Minister of the United Kingdom?",a:"Margaret Thatcher"},
   {c:"his",d:4,y:1911,q:"Who was the first person to reach the South Pole?",a:"Roald Amundsen"},
   {c:"his",d:5,y:1571,q:"Which 1571 naval battle ended Ottoman expansion in the Mediterranean?",a:"Lepanto"},
@@ -358,23 +372,23 @@ const BANK = [
   {c:"sci",d:5,y:1905,q:"In what year did Einstein publish his special theory of relativity?",a:"1905"},
   {c:"sci",d:5,y:null,q:"What is the most abundant protein in the human body?",a:"Collagen"},
   {c:"spo",d:1,y:null,q:"How many players are on a basketball team on the court at once?",a:"Five"},
-  {c:"spo",d:1,y:null,q:"In which sport is the Stanley Cup awarded?",a:"Ice hockey"},
+  {c:"spo",d:1,y:null,q:"In which sport is the Stanley Cup awarded?",n:['us','ca'],a:"Ice hockey"},
   {c:"spo",d:1,y:null,q:"What sport is played at Wimbledon?",a:"Tennis"},
   {c:"spo",d:1,y:null,q:"How many rings are on the Olympic flag?",a:"Five"},
-  {c:"spo",d:2,y:null,q:"How many innings are in a standard baseball game?",a:"Nine"},
+  {c:"spo",d:2,y:null,q:"How many innings are in a standard baseball game?",n:['us','ca'],a:"Nine"},
   {c:"spo",d:2,y:null,q:"Which country hosts the Tour de France?",a:"France"},
   {c:"spo",d:2,y:2010,q:"Which country won the 2010 FIFA World Cup?",a:"Spain"},
   {c:"spo",d:2,y:null,q:"In golf, what is one stroke under par on a hole called?",a:"A birdie"},
-  {c:"spo",d:3,y:1992,q:"Which Olympics featured the original U.S. basketball “Dream Team”?",a:"Barcelona 1992"},
-  {c:"spo",d:3,y:null,q:"How many points is a touchdown plus the extra-point kick worth?",a:"Seven"},
-  {c:"spo",d:3,y:2015,q:"Which race is the final leg of the American Triple Crown?",a:"The Belmont Stakes"},
+  {c:"spo",d:3,y:1992,q:"Which Olympics featured the original U.S. basketball “Dream Team”?",n:['us'],a:"Barcelona 1992"},
+  {c:"spo",d:3,y:null,q:"How many points is a touchdown plus the extra-point kick worth?",n:['us'],a:"Seven"},
+  {c:"spo",d:3,y:2015,q:"Which race is the final leg of the American Triple Crown?",n:['us'],a:"The Belmont Stakes"},
   {c:"spo",d:3,y:1997,q:"Who became the youngest Masters champion in 1997?",a:"Tiger Woods"},
   {c:"spo",d:4,y:1974,q:"In which African city did Ali beat Foreman in the “Rumble in the Jungle”?",a:"Kinshasa"},
   {c:"spo",d:4,y:null,q:"How long is a marathon, in miles?",a:"26.2 miles"},
-  {c:"spo",d:4,y:1941,q:"Which Yankee had a 56-game hitting streak in 1941?",a:"Joe DiMaggio"},
+  {c:"spo",d:4,y:1941,q:"Which Yankee had a 56-game hitting streak in 1941?",n:['us'],a:"Joe DiMaggio"},
   {c:"spo",d:4,y:null,q:"In which sport would you use a shuttlecock?",a:"Badminton"},
-  {c:"spo",d:5,y:1908,q:"Which MLB team went from 1908 to 2016 without a World Series title?",a:"The Chicago Cubs"},
-  {c:"spo",d:5,y:1972,q:"Which NFL team completed the only perfect season, in 1972?",a:"The Miami Dolphins"},
+  {c:"spo",d:5,y:1908,q:"Which MLB team went from 1908 to 2016 without a World Series title?",n:['us','ca'],a:"The Chicago Cubs"},
+  {c:"spo",d:5,y:1972,q:"Which NFL team completed the only perfect season, in 1972?",n:['us'],a:"The Miami Dolphins"},
   {c:"spo",d:5,y:null,q:"In curling, what is the target area called?",a:"The house"},
   {c:"spo",d:5,y:1960,q:"Which Ethiopian won the 1960 Olympic marathon running barefoot?",a:"Abebe Bikila"},
 ];
@@ -407,6 +421,9 @@ function groupKey(){
   return names.length ? names.join('-').slice(0,180) : null;
 }
 function playerYears(){ return Object.values(players).map(p=>+p.year).filter(y=>y>1900&&y<2030); }
+function playerNations(){ return [...new Set(Object.values(players).map(p=>p.nation).filter(id=>nationOf(id)))]; }
+// A question tagged with nations is only fair game when everyone at the table is from one of them.
+function nationOk(q, nations){ return !q.n || !nations.length || nations.every(id=>q.n.includes(id)); }
 function setReady(catId){ return !generator() || sets[catId]!==undefined; }
 // Category schedule: a shuffled category order per game; the QM and the category both advance every
 // turn. Player p in round r hosts catOrder[(r + k*p) % 6], which gives every player all six categories
@@ -422,7 +439,7 @@ async function ensureSet(catId){
   try{
     const cat = CATS.find(c=>c.id===catId);
     const raw = await Promise.race([
-      generator()(cat, setSize(), playerYears(), groupSeen.slice(-150)),
+      generator()(cat, setSize(), playerYears(), groupSeen.slice(-150), playerNations()),
       new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),90000))
     ]);
     const clean = (Array.isArray(raw)?raw:[]).filter(x=>x&&x.q&&x.a).map((x,i)=>({
@@ -440,8 +457,9 @@ function pickOptions(catId, usedIds){
   const used = new Set(usedIds||[]), seen = new Set(groupSeen);
   const years = playerYears();
   const youngest = years.length?Math.max(...years):1980, oldest = years.length?Math.min(...years):1960;
+  const nations = playerNations();
   const weight = q=>{ if(q.y==null) return 1; if(q.y >= youngest+8) return 1; if(q.y >= oldest+8) return .6; return .3; };
-  const fresh = q=>!used.has(q.id) && !seen.has(q.q);
+  const fresh = q=>!used.has(q.id) && !seen.has(q.q) && nationOk(q, nations);
   const gen = (sets[catId]&&sets[catId].qs)||[];
   const bank = BANK.filter(q=>q.c===catId);
   const out=[];
@@ -509,17 +527,17 @@ function localStore(){
   return {doc:docRef, collection:colRef};
 }
 const SIM_SEATS = [
-  {id:'s1', name:'Mark', year:'1972'},
-  {id:'s2', name:'Sam', year:'1985'},
-  {id:'s3', name:'Jo', year:'1998'},
-  {id:'s4', name:'Pat', year:'2004'},
+  {id:'s1', name:'Mark', year:'1972', nation:'us'},
+  {id:'s2', name:'Sam', year:'1985', nation:'uk'},
+  {id:'s3', name:'Jo', year:'1998', nation:'au'},
+  {id:'s4', name:'Pat', year:'2004', nation:'ca'},
 ];
 let sim = false;
 
 // ---------- App state ----------
 const app = document.getElementById('app');
 let db = null, code = codeFromHash(), game = null, players = {}, answers = {}, unsubs = [], writeBlocked = false, busy = false;
-let draft = {name: store('qm.name')||'', year: store('qm.year')||'', answer:'', custom:'', customA:''};
+let draft = {name: store('qm.name')||'', year: store('qm.year')||'', nation: store('qm.nation')||'', answer:'', custom:'', customA:''};
 let judged = {}; // local QM judgments before reveal
 
 function gameRef(){ return db.doc('games/'+code); }
@@ -559,9 +577,9 @@ async function createGame(){
   location.hash = code;
   subscribe();
 }
-async function joinGame(name, year){
-  store('qm.name',name); store('qm.year',year);
-  await playerRef().set({name, year, joined: Date.now()});
+async function joinGame(name, year, nation){
+  store('qm.name',name); store('qm.year',year); store('qm.nation',nation);
+  await playerRef().set({name, year, nation, joined: Date.now()});
 }
 async function startGame(){
   const ids = Object.keys(players);
@@ -610,7 +628,7 @@ async function useBankNow(){
 async function startDemo(){
   sim = true; db = localStore(); code = 'DEMO'; PID = SIM_SEATS[0].id; judged = {};
   await gameRef().set(freshGame());
-  for(const [i,s] of SIM_SEATS.entries()) await playerRef(s.id).set({name:s.name, year:s.year, joined: Date.now()+i});
+  for(const [i,s] of SIM_SEATS.entries()) await playerRef(s.id).set({name:s.name, year:s.year, nation:s.nation, joined: Date.now()+i});
   subscribe();
 }
 function switchSeat(id){ PID = id; draft.answer=''; render(); }
@@ -708,13 +726,17 @@ function view_lobby(){
     html += `<div class="card">
       <h2>Join the game</h2>
       <div><label for="name">Your name</label><input id="name" value="${esc(draft.name)}" autocomplete="given-name" enterkeyhint="next" placeholder="Mark"></div>
-      <div><label for="year">Year you were born</label><input id="year" value="${esc(draft.year)}" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" placeholder="1975"></div>
+      <div><label for="year">Year you were born</label><input id="year" value="${esc(draft.year)}" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" placeholder="1975"></div>
+      <div><label for="nation">Where you’re from</label><select id="nation"><option value="" ${draft.nation?'':'selected'} disabled>Choose a country</option>${NATIONS.map(n=>`<option value="${n.id}" ${draft.nation===n.id?'selected':''}>${n.flag} ${esc(n.name)}</option>`).join('')}</select></div>
+      <p class="muted">Questions are tuned to the countries at the table: a mixed table only gets subjects everyone would know.</p>
       <button class="primary" data-act="join" ${busy?'disabled':''}>Join</button>
     </div>`;
   }
+  const nations = playerNations();
   html += `<div class="card">
     <h2>Players (${list.length})</h2>
-    <div class="plist">${list.map(([id,p])=>`<div class="prow"><span class="name">${esc(p.name)}</span><span class="muted">${esc(p.year)}</span>${id===PID?'<span class="chip">you</span>':''}</div>`).join('')||'<p class="muted">Waiting for players to join…</p>'}</div>
+    <div class="plist">${list.map(([id,p])=>`<div class="prow"><span class="name">${esc(p.name)}</span><span class="muted">${esc(p.year)}</span><span class="muted" title="${esc((nationOf(p.nation)||{}).name||'')}">${(nationOf(p.nation)||{}).flag||''}</span>${id===PID?'<span class="chip">you</span>':''}</div>`).join('')||'<p class="muted">Waiting for players to join…</p>'}</div>
+    ${nations.length>1?`<p class="muted">Mixed table (${nations.map(id=>nationOf(id).flag).join(' ')}): questions will stick to what’s known across all of these countries.</p>`:''}
     ${me&&generator()&&!sim?`<p class="muted">${sets.geo&&sets.geo.source==='gemini'?'First round of questions is ready.':'Writing the first round of questions for this group in the background…'}</p>`:''}
     ${me?`<p class="muted">Has everyone joined? Anyone can confirm. The first Quiz Master is picked at random.</p><button class="primary" data-act="start" ${list.length<2||busy?'disabled':''}>Everyone’s here, start</button>`:''}
   </div>`;
@@ -833,6 +855,7 @@ function view_final(){
 
 // ---------- Event binding ----------
 function bind(){
+  app.querySelectorAll('select').forEach(sel=>sel.addEventListener('change', e=>{ if(e.target.id==='nation') draft.nation=e.target.value; }));
   app.querySelectorAll('input').forEach(inp=>{
     inp.addEventListener('input', e=>{ const m={name:'name',year:'year',answer:'answer',custom:'custom',customa:'customA'}; if(m[e.target.id]) draft[m[e.target.id]]=e.target.value; });
     inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ const b=inp.closest('.card').querySelector('button.primary, button[data-act]'); if(b) b.click(); } });
@@ -849,7 +872,7 @@ function act(d){
     case 'joincode': { const v=(document.getElementById('joincode').value||'').trim().toUpperCase(); if(/^[A-Z0-9]{4}$/.test(v)){ code=v; location.hash=v; subscribe(); } return; }
     case 'leave': sim=false; code=null; db=realDb; PID=store('qm.pid'); location.hash=''; subscribe(); return;
     case 'copylink': { const url=location.href.split('#')[0].replace(/\/?$/,'/')+'#'+code; navigator.clipboard.writeText(url).then(()=>{},()=>{}); return; }
-    case 'join': { const name=draft.name.trim(), year=draft.year.trim(); if(!name||!/^\d{4}$/.test(year)) return; return safeWrite(()=>joinGame(name,year)); }
+    case 'join': { const name=draft.name.trim(), year=draft.year.trim(), nation=draft.nation; if(!name||!/^\d{4}$/.test(year)||!nationOf(nation)) return; return safeWrite(()=>joinGame(name,year,nation)); }
     case 'start': return safeWrite(startGame);
     case 'pick': return safeWrite(()=>chooseQuestion(game.options[+d.i]));
     case 'pickcustom': { const q=draft.custom.trim(), a=draft.customA.trim(); if(!q||!a) return; draft.custom=''; draft.customA=''; return safeWrite(()=>chooseQuestion({q,a,d:0})); }
@@ -892,13 +915,23 @@ function makeGeminiGenerator(ai, getGenerativeModel, Schema){
   const MODELS = ['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash','gemini-3.5-flash-lite','gemini-3.1-flash-lite'];
   const models = MODELS.map(m=>getGenerativeModel(ai, { model:m, generationConfig:{ responseMimeType:'application/json', responseSchema:schema, temperature:1.0 } }));
   let start = 0; // remember which model last worked so we don't re-hit exhausted ones
-  return async function(cat, count, years, avoid){
+  return async function(cat, count, years, avoid, nations){
     const per = Math.max(2, Math.round(count/5));
     const oldest = years.length?Math.min(...years):1960;
+    const names = (nations||[]).map(id=>nationOf(id).name);
+    let where;
+    if(names.length===1){
+      where = `All players are from ${names[0]}. Write for people who grew up there: their sports, television, music, public figures, history and everyday culture are fair game, and some questions should be about ${names[0]} itself. Use that country's spelling and vocabulary. Still include some world items.`;
+    } else if(names.length>1){
+      where = `Players are from different countries: ${names.join(', ')}. This is a mixed table, so every question must be about something famous in ALL of those countries equally. Do not ask about anything known mainly in one of them: domestic leagues, teams and players (NFL, MLB, NHL, college sports, cricket, rugby union or league, AFL, NRL, Gaelic games, CFL), country-specific TV shows, presenters, comedians and news anchors, politicians below head-of-government level, state, provincial or county facts, local chains, brands, foods or holidays, and national-only history or school curriculum. Safe ground: the Olympics, FIFA World Cup, Formula 1, tennis Grand Slams, golf majors, global superstars, Hollywood films, worldwide music acts, world history, science, geography and literature. Use neutral spelling and avoid country-specific units or terms.`;
+    } else {
+      where = `Players are English speakers from unknown countries; stick to subjects famous across the English-speaking world rather than any one country.`;
+    }
     const prompt = `You write questions for a living-room trivia game played by friends. Category: ${cat.name} (in the spirit of the Trivial Pursuit "${cat.name}" wedge).
 Players were born in: ${years.length?years.join(', '):'the 1970s to 2000s'}. Favor subjects from roughly ${oldest} onward that these players lived through, mixed with timeless classics everyone grows up learning. Avoid events from the last 12 months.
-Write exactly ${per*5} questions: ${per} at each difficulty 1, 2, 3, 4 and 5. Difficulty 1 = a gimme: everyone at the table, including people who never play trivia, answers instantly (household names, the most famous landmarks, blockbuster films, grade-school facts); 2 = most adults know it; 3 = a reasonably informed adult has a fair shot; 4 = a regular trivia-night player would get it; 5 = only a committed trivia fan would know it.
-Rules: each question is at most 18 words and reads naturally aloud; each has one clear, verifiable answer of 1 to 5 words; no true/false, no multiple choice, no "which of these"; no two questions about the same subject; mostly U.S.-friendly but include some world items; the question must not contain its own answer. Set y to the year the subject is most associated with, or null if timeless.
+${where}
+Write exactly ${per*5} questions: ${per} at each difficulty 1, 2, 3, 4 and 5. Difficulty 1 = a gimme: everyone at the table, including people who never play trivia, answers instantly (household names, the most famous landmarks, blockbuster films, grade-school facts); 2 = most adults know it; 3 = a reasonably informed adult has a fair shot; 4 = a regular trivia-night player would get it; 5 = only a committed trivia fan would know it. Judge difficulty by how well the players described above would know it, not by how obscure it is in general.
+Rules: each question is at most 18 words and reads naturally aloud; each has one clear, verifiable answer of 1 to 5 words; no true/false, no multiple choice, no "which of these"; no two questions about the same subject; the question must not contain its own answer. Set y to the year the subject is most associated with, or null if timeless.
 Do not reuse or closely paraphrase any of these questions the group has already seen:
 ${avoid.length?avoid.map(t=>'- '+t).join('\n'):'(none yet)'}
 Return only a JSON array of objects with keys q, a, d, y.`;
